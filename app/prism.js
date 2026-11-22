@@ -43,3 +43,51 @@ function samplePrism(){
 }
 setInterval(samplePrism,40);
 window.addEventListener('pagehide',detachPrism);
+/* Morph each ribbon independently. Matching cubic segments let Chromium
+   interpolate contours without rebuilding the blurred layers in JavaScript. */
+const ribbonTemplate = document.querySelector('#light-ribbon');
+const ribbonCurves = [...prismArt.querySelectorAll('.prism-orbit i')].map((layer, index) => {
+  const clip = ribbonTemplate.cloneNode(true);
+  clip.id = 'prism-curve-' + index;
+  ribbonTemplate.parentNode.append(clip);
+  layer.style.clipPath = 'url(#' + clip.id + ')';
+  return { path: clip.firstElementChild, animation: null };
+});
+
+function randomRibbonPath() {
+  const bend = .08 + Math.random() * .48;
+  const waist = .30 + Math.random() * .36;
+  const width = .13 + Math.random() * .21;
+  const top = .46 + Math.random() * .49;
+  const tip = .50 + Math.random() * .47;
+  return 'M ' + top + ' 0 C .70 .16 ' + bend + ' .24 ' + bend + ' ' + waist +
+    ' C ' + bend + ' .77 ' + tip + ' .76 ' + tip + ' 1' +
+    ' C .58 .82 ' + (bend-width) + ' .86 ' + (bend-width) + ' ' + waist +
+    ' C ' + (bend-width) + ' .28 .35 .12 ' + top + ' 0 Z';
+}
+
+function animateRibbon(curve) {
+  const next = randomRibbonPath();
+  curve.animation = curve.path.animate(
+    [curve.path.getAttribute('d'), next].map(d => ({ d: 'path("' + d + '")' })),
+    { duration: 6500 + Math.random() * 8000, easing: 'ease-in-out' }
+  );
+  curve.animation.onfinish = () => {
+    curve.path.setAttribute('d', next);
+    curve.animation = null;
+    updateRibbonMotion();
+  };
+}
+
+function updateRibbonMotion() {
+  const active = document.documentElement.dataset.theme === 'prism' && !document.hidden && !quietMotion.matches;
+  for (const curve of ribbonCurves) {
+    if (!active) curve.animation?.pause();
+    else if (!curve.animation) animateRibbon(curve);
+    else if (curve.animation.playState === 'paused') curve.animation.play();
+  }
+}
+new MutationObserver(updateRibbonMotion).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+document.addEventListener('visibilitychange', updateRibbonMotion);
+quietMotion.addEventListener('change', updateRibbonMotion);
+updateRibbonMotion();
