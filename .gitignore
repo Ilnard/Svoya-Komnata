@@ -1,0 +1,7 @@
+node_modules/
+runtime/
+desktop/runtime/
+outputs/
+*.state.json
+*.sqlite
+*.tmp

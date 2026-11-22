@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101615"><title>Своя комната</title>
+<link rel="icon" href="/icon.ico" sizes="any"><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script><script defer src="/room-tools.js"></script><script defer src="/lobby-tools.js"></script><script defer src="/view-quality.js"></script><script defer src="/room-media.js"></script>
+<script defer src="/extras.js"></script><script defer src="/player.js"></script><script defer src="/prism.js"></script></head>
+<body><div class="prism-art" aria-hidden="true"><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div></div>
+<div class="app-shell">
+<header class="app-header">
+  <div class="brand"><img src="/icon.png" alt="" width="42" height="42"><span>Своя комната</span></div>
+  <div class="header-room-name"><div><div class="eyebrow">ГОЛОСОВАЯ КОМНАТА</div><h1 id="roomTitle">Своя комната</h1></div></div><button id="inviteOpen" class="secondary"><i data-icon="user-plus"></i>Пригласить друзей</button><button id="openSettings" class="secondary">Настройки</button><div class="connection"><span class="status-dot"></span><span id="status" role="status">Готовы к разговору</span></div>
+</header>
+<main id="lobby" class="lobby">
+  <section class="welcome">
+    <div class="welcome-mark"><img src="/icon.png" alt="" width="136" height="136"></div>
+    <h1>Хорошо, когда<br>все <em>рядом.</em></h1>
+    <p class="intro">Своя комната для разговоров с друзьями.<br>Создай её и пригласи своих.</p>
+    <div class="capabilities"><span><i data-icon="mic"></i>Голос</span><span><i data-icon="chat"></i>Чат</span><span><i data-icon="screen"></i>Общий экран</span></div>
+    <div class="network-note"><i data-icon="network"></i><p>Прямое подключение к ПК хоста.<br>До 8 человек. Для интернета нужны UPnP и публичный IPv4.</p></div>
+  </section>
+  <section class="entry-card" aria-labelledby="entryTitle">
+    <h2 id="entryTitle">Давай созвонимся</h2><p class="muted">Как тебя увидят друзья?</p>
+    <div class="profile-edit"><button type="button" id="avatarPick" title="Выбрать аватар" aria-label="Выбрать аватар"><i data-icon="plus" aria-hidden="true"></i></button><input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp" hidden><button type="button" id="avatarClear" hidden>Убрать фото</button></div>
+    <label for="name">Твоё имя</label><input id="name" maxlength="32" autocomplete="nickname" placeholder="Например, Саша">
+    <div class="greeting-edit"><button class="secondary" id="pickGreeting">Добавить звук входа</button><button id="playGreeting" hidden>Послушать</button><button id="clearGreeting" hidden>Убрать</button><input hidden type="file" id="greetingFile" accept="audio/*"><small>До 3 секунд</small></div><label for="archiveSelect">Моя комната</label><select id="archiveSelect"><option value="">Новая комната</option></select>
+    <input id="archiveTitle" maxlength="60" aria-label="Название новой комнаты" placeholder="Название комнаты">
+    <label for="mode" class="mode-label">Создать комнату</label>
+    <select id="mode"><option value="internet">Через интернет · автоматически открыть порт</option><option value="lan">В локальной сети</option></select>
+    <small class="field-hint">Комната будет видна участникам вашей локальной сети.</small>
+    <button id="create" class="primary wide"><i data-icon="plus"></i><span>Создать комнату</span><i class="end-icon" data-icon="arrow"></i></button>
+    <section class="room-directory"><h3>Доступные комнаты</h3><button id="refreshRooms" class="secondary">Обновить</button><div id="roomList"></div><small id="roomListHint" role="status"></small></section>
+    <details id="manualJoin"><summary>Войти по приглашению</summary>
+    <form id="join">
+      <label for="invite">Приглашение от друга</label><input id="invite" placeholder="Вставь код комнаты" required autocomplete="off" spellcheck="false">
+      <button id="joinButton" class="secondary wide"><i data-icon="enter"></i>Войти в комнату</button>
+    </form>
+    </details>
+    <p id="lobbyError" class="inline-error" role="alert" hidden></p>
+    <div id="lanOffer" hidden>
+      <p class="field-hint" id="lanHelp"></p>
+      <button type="button" id="lanAction" class="secondary wide"></button>
+    </div>
+
+    <p class="entry-hint"><i data-icon="mic-off"></i>Микрофон включается после входа</p>
+  </section>
+<small class="app-version" id="menuVersion"></small></main>
+<main id="room" class="room" hidden>
+  <header class="room-header"><div class="header-player"><strong id="songName">Очередь пуста</strong><input type="range" id="songSeek" min="0" max="0" step="0.1" value="0" aria-label="Позиция трека"><small id="songTime"></small><div class="transport"><button id="songPrevious" aria-label="Предыдущий трек" title="Предыдущий трек">⏮</button><button id="songPlay" aria-label="Воспроизвести" title="Воспроизвести">▶</button><button id="songNext" aria-label="Следующий трек" title="Следующий трек">⏭</button></div></div><div class="header-volume"><label for="songVolume">Громкость · <output id="songPercent">70%</output></label><input id="songVolume" type="range" min="0" max="100" value="70"></div>
+    
+    <button id="openMusic" class="secondary">♫ Музыка</button>
+  </header>
+  <div class="room-layout">
+    <aside class="people-panel">
+      <div class="section-heading"><h2>Участники</h2><span id="memberCount" class="count">1 / 8</span></div>
+      <ul id="members"></ul><p id="hostNote" class="host-note"><i data-icon="server"></i><span>Комната работает на ПК хоста</span></p>
+    </aside>
+    <section class="stage-panel" aria-label="Демонстрация экрана">
+      <div class="stage-heading"><span id="stageTitle">Ваша встреча</span>      <button id="screen" class="secondary" aria-pressed="false"><i data-icon="screen"></i><span>Показать экран</span></button><button id="fullscreen" class="icon-button" title="На весь экран" aria-label="Развернуть трансляцию на весь экран" hidden><i data-icon="expand"></i></button></div>
+      <div id="stream" class="stream">
+        <div id="streamEmpty" class="stream-empty">
+          <div class="room-symbol"><i data-icon="headphones"></i></div>
+          <h2 id="streamLabel">Вы в комнате</h2><p id="streamHint">Пригласи друзей, чтобы начать разговор.</p>
+          <button id="watchStart" class="primary" hidden>Смотреть демонстрацию</button>
+          <button id="stageShare" class="secondary"><i data-icon="screen"></i>Показать экран</button>
+        </div>
+        <div id="loadingScreen" hidden><i class="load-ring" aria-hidden="true"></i><p id="loadingText" role="status"></p><button id="showAvailable" class="secondary" hidden>Смотреть в доступном качестве</button></div>
+        <video id="video" autoplay playsinline muted hidden></video>
+      </div>
+      <div id="viewSettings" hidden><label>Разрешение<select id="viewHeight"><option value="480">480p</option><option value="720" selected>720p</option></select></label>
+        <label>Лимит видеобитрейта<select id="viewRate"><option value="1">1 Мбит/с</option><option value="2">2 Мбит/с</option><option value="4" selected>4 Мбит/с</option><option value="6">6 Мбит/с</option><option value="8">8 Мбит/с</option></select></label></div>
+      <div id="viewerTools" hidden><label>Звук демонстрации <output id="streamPercent">100%</output><input id="streamVolume" type="range" min="0" max="100" value="100"></label><button id="streamMute" class="secondary" aria-pressed="false">Без звука</button><button id="statsToggle" class="secondary" aria-expanded="false">Как идёт трансляция?</button></div>
+      <section id="streamStats" hidden><pre id="statsValue">Сбор данных…</pre><button id="copyStats" class="secondary">Скопировать показатели</button></section>
+      <button id="watchStop" class="secondary" hidden>Выйти из просмотра</button>
+      <div id="delayControl" hidden>
+        <label for="playoutDelay">Буфер демонстрации</label><output for="playoutDelay" id="delayValue">Авто</output>
+        <input id="playoutDelay" type="range" min="0" max="1000" step="50" value="0" aria-valuetext="Авто" aria-describedby="delayHelp">
+        <small id="delayHelp">Увеличь, если изображение замирает или прерывается звук игры.</small>
+      </div>
+      <div class="stage-caption"><span class="status-dot"></span><span id="stageCaption">Микрофон выключен. Включи его, когда будешь готов.</span></div>
+    </section>
+    <section class="chat-panel" aria-labelledby="chatTitle">
+      <div class="section-heading"><h2 id="chatTitle">Чат комнаты</h2><button id="historyOpen" class="secondary">История</button></div>
+      <div class="chat-body">
+        <div id="chatEmpty" class="chat-empty"><i data-icon="chat"></i><p>Начни с «Привет!»</p><span>Сообщения видны всем в комнате</span></div>
+        <ol id="messages" aria-live="polite" aria-relevant="additions" aria-label="Сообщения"></ol>
+      </div>
+      <small id="transferStatus" role="status"></small><form id="send" class="composer"><button type="button" id="attach" title="Прикрепить файл до 16 МиБ" aria-label="Прикрепить файл">＋</button><input type="file" id="filePick" hidden><input id="message" aria-label="Сообщение" placeholder="Написать сообщение…" maxlength="1000" required autocomplete="off"><button class="send-button" aria-label="Отправить сообщение" title="Отправить"><i data-icon="send"></i></button></form>
+    </section>
+  </div>
+  <footer class="call-bar">
+    <div class="self"><span id="selfAvatar" class="avatar">С</span><div><strong id="selfName">Ты</strong><span id="selfStatus">Микрофон выключен</span></div></div>
+    <div class="call-controls">
+      <button id="mic" class="control" aria-pressed="false"><i data-icon="mic-off"></i><span>Микрофон</span></button>
+      <button id="voiceTest" class="control" aria-pressed="false">Проверить голос</button>
+      <button id="micSettings" class="control" title="Выбрать микрофон">Вход звука</button>
+      <button id="deafen" class="control" aria-pressed="false" title="Отключить звук участников"><i data-icon="headphones"></i><span>Звук</span></button>
+
+
+
+    </div>
+    <button id="leave" class="leave"><i data-icon="hangup"></i><span>Выйти</span></button>
+  </footer>
+</main>
+</div>
+<dialog id="inviteDialog">
+  <div class="dialog-heading"><h2>Позови своих</h2><button id="inviteClose" class="icon-button" aria-label="Закрыть"><i data-icon="close"></i></button></div>
+  <p class="muted">Другу нужно открыть приложение и вставить этот код в поле приглашения.</p>
+  <p id="networkMessage" class="field-hint" hidden></p>
+  <div id="hosting"><label for="address">Адрес твоей сети</label><select id="address"></select><p class="field-hint">Выбери адрес общей локальной сети или VPN.</p></div>
+  <label for="inviteCode">Код комнаты</label><input id="inviteCode" readonly spellcheck="false">
+  <button id="copy" class="primary wide"><i data-icon="copy"></i><span>Скопировать приглашение</span></button>
+</dialog>
+<div id="toast" class="toast" role="alert" hidden></div>
+<dialog id="sourcePicker" aria-labelledby="sourceTitle"><div class="dialog-heading"><h2 id="sourceTitle">Демонстрация экрана</h2><button id="cancelSource" aria-label="Отмена">×</button></div><div id="sourceGrid"></div><footer class="source-footer">      <label class="share-audio"><input type="checkbox" id="shareAudio" checked>Звук</label></footer></dialog>
+<dialog id="micDialog" aria-labelledby="micTitle"><div class="dialog-heading"><h2 id="micTitle">Настройки микрофона</h2><button id="closeMic" aria-label="Закрыть">×</button></div><label for="micList">Устройство ввода</label><select id="micList"></select><p class="field-hint" id="micHint">Изменение применяется во время звонка.</p><label for="noiseLevel">Шумоподавление · <output id="noiseValue">75%</output></label><input id="noiseLevel" type="range" min="0" max="100" step="5" value="75"><label for="micMeter">Уровень после шумоподавления</label><meter id="micMeter" min="0" max="1" value="0"></meter><small id="meterHint"></small><button id="micAccess" hidden>Разрешить доступ для поиска устройств</button></dialog>
+<dialog id="settingsDialog"><div class="dialog-heading"><h2>Настройки</h2><button id="closeSettings" aria-label="Закрыть">×</button></div>
+<label for="theme">Оформление</label><select id="theme"><option value="mint">Мята</option><option value="ocean">Глубокий океан</option><option value="dusk">Сиреневые сумерки</option><option value="amber">Янтарный вечер</option><option value="white">Белая</option><option value="graphite">Графит</option><option value="prism">Переливы · экспериментальная</option></select><label for="greetingVolume">Громкость звуков входа · <output id="greetingPercent">70%</output></label><input type="range" min="0" max="100" value="70" id="greetingVolume"><button id="audioSettings" class="secondary">Настройки микрофона</button>
+<label for="muteKey">Горячая клавиша микрофона</label><div class="shortcut-row"><button id="muteKey" class="secondary">Назначить</button><button id="clearKey" class="secondary">Сбросить</button></div><small id="keyHint" role="status"></small>
+    <div id="gpuSettings" hidden><label><input type="checkbox" id="gpuEnabled"> Использовать аппаратное ускорение GPU</label><small id="gpuHint" role="status"></small></div><small class="app-version" id="settingsVersion"></small></dialog>
+<dialog id="kicked"><div class="kick-door" aria-hidden="true">🚪</div><h2>Тебя исключили из комнаты</h2><form method="dialog"><button class="primary">В главное меню</button></form></dialog>
+<dialog id="largeAvatar"><h2 id="avatarTitle"></h2><img id="avatarPicture" alt=""><form method="dialog"><button class="secondary">Закрыть</button></form></dialog>
+<dialog id="historyDialog"><h2>История комнаты</h2><button class="secondary" id="historyMore">Показать раньше</button><ol id="historyRows"></ol><form method="dialog"><button class="secondary">Закрыть</button></form></dialog><dialog id="mediaDialog"><header><strong id="mediaTitle"></strong><button id="closeMedia" aria-label="Закрыть просмотр">×</button></header><div id="mediaBody" aria-live="polite"></div><button id="saveMedia" class="secondary" disabled>Сохранить файл</button></dialog><dialog id="musicDialog"><header class="dialog-heading"><h2>Музыка комнаты</h2><form method="dialog"><button aria-label="Закрыть">×</button></form></header>
+
+<div class="music-actions"><button id="addSong">Добавить трек</button><input hidden id="songFile" type="file" accept="audio/*" multiple></div>
+
+<label id="policyRow"><input type="checkbox" id="songPolicy"> Управлять могут только администраторы</label><small id="songStatus" role="status"></small><ol id="songQueue"></ol></dialog></body></html>

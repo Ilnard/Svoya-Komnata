@@ -1,0 +1,9 @@
+{
+  "name": "svoya-komnata",
+  "version": "0.3.0",
+  "private": true,
+  "dependencies": {
+    "ws": "8.23.0",
+    "node-forge": "1.4.3"
+  }
+}
