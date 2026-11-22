@@ -49,7 +49,24 @@ async function start() {
     try{registerKey(key);preferences.save({muteKey:key});return true;}
     catch{try{registerKey(previous);}catch{}return false;}
   });
-  ipcMain.handle('updates:open',event=>{if(trusted(event))return shell.openExternal('https://github.com/Ilnard/Svoya-Komnata/releases');});
+  let installerAsset, downloading = false;
+  ipcMain.handle('updates:install', async (event, version) => {
+    if (!trusted(event) || downloading || !installerAsset || installerAsset.version !== version)
+      return { error: 'Установщик этой версии пока недоступен.' };
+    downloading = true;
+    try {
+      const file = await require('./update.cjs').downloadInstaller(installerAsset, app.getPath('temp'),
+        percent => { if (win && !win.isDestroyed()) win.webContents.send('updates:progress', percent); });
+      const error = await shell.openPath(file);
+      if (error) throw Error(error);
+      app.quit();
+      return {};
+    } catch (error) {
+      return { error: error.message };
+    } finally {
+      downloading = false;
+    }
+  });
   ipcMain.handle('updates:check',async event=>{
     if(!trusted(event))return null;
     try{
@@ -60,6 +77,12 @@ async function start() {
       if(!/^[0-9]+[.][0-9]+[.][0-9]+$/.test(latest))return {state:'none'};
       const current=require('./package.json').version.split('.').map(Number),next=latest.split('.').map(Number);
       const index=next.findIndex((n,i)=>n!==current[i]);
+      const name = 'SvoyaKomnata-' + latest + '-Setup-x64.exe';
+      const url = 'https://github.com/Ilnard/Svoya-Komnata/releases/download/' + data.tag_name + '/' + name;
+      const asset = data.assets?.find(item => item.name === name && item.browser_download_url === url &&
+        item.state === 'uploaded' && Number.isSafeInteger(item.size) && item.size > 0 && /^sha256:[a-f0-9]{64}$/.test(item.digest));
+      installerAsset = index >= 0 && next[index] > current[index] && asset
+        ? { name, url, size: asset.size, digest: asset.digest, version: latest } : null;
       return {state:index>=0&&next[index]>current[index]?'available':'current',version:latest,required:index>=0&&index<2&&next[index]>current[index]};
     }catch{return {state:'unavailable'};}
   });

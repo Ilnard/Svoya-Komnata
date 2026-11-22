@@ -125,16 +125,48 @@ api('version',{},null).then(({version})=>{
   ui.menuVersion.textContent=ui.settingsVersion.textContent='Версия '+version;
 }).catch(()=>{});
 
-window.roomDevices?.checkUpdate().then(result=>{
-  const button=document.createElement('button');button.className='secondary';button.type='button';
-  button.textContent=result?.state==='available'?'Доступна версия '+result.version:'Версии на GitHub';
-  button.onclick=()=>window.roomDevices.openReleases();ui.settingsVersion.after(button);
-  if(result?.state==='available'){
-    ui.updateTitle.textContent='Доступна версия '+result.version;
-    ui.updateText.textContent=result.required?'Для входа в комнату установи новую версию приложения.':'Можно установить обновление сейчас или продолжить звонки на текущей версии.';
-    ui.downloadUpdate.onclick=()=>window.roomDevices.openReleases();
-    ui.skipUpdate.hidden=result.required;ui.skipUpdate.onclick=()=>ui.updateDialog.close();
-    ui.updateDialog.oncancel=event=>{if(result.required)event.preventDefault();};
-    ui.updateDialog.showModal();
+if (window.roomDevices) {
+  const button = document.createElement('button');
+  button.className = 'secondary';
+  button.textContent = 'Проверить обновления';
+  ui.settingsVersion.after(button);
+  let busy = false, mandatory = false;
+  ui.updateDialog.oncancel = event => { if (busy || mandatory) event.preventDefault(); };
+  ui.skipUpdate.onclick = () => ui.updateDialog.close();
+  window.roomDevices.onUpdateProgress(percent => {
+    ui.updateText.textContent = percent < 100 ? 'Скачивание · ' + percent + '%' : 'Проверяем установщик…';
+  });
+  async function check() {
+    button.disabled = true;
+    try {
+      const result = await window.roomDevices.checkUpdate();
+      if (result?.state !== 'available') {
+        button.textContent = result?.state === 'current' ? 'Установлена последняя версия' : 'Проверить обновления ещё раз';
+        return;
+      }
+      mandatory = result.required;
+      ui.updateTitle.textContent = 'Доступна версия ' + result.version;
+      ui.updateText.textContent = mandatory ? 'Для входа в комнату требуется обновление.' : 'Обновление можно отложить.';
+      ui.skipUpdate.hidden = mandatory;
+      ui.downloadUpdate.textContent = 'Скачать и установить';
+      ui.downloadUpdate.onclick = async () => {
+        busy = ui.downloadUpdate.disabled = ui.skipUpdate.disabled = true;
+        ui.updateText.textContent = 'Подключаемся к GitHub…';
+        try {
+          const reply = await window.roomDevices.installUpdate(result.version);
+          if (reply.error) throw Error(reply.error);
+          ui.updateText.textContent = 'Установщик запущен.';
+        } catch (error) {
+          ui.updateText.textContent = 'Не удалось обновиться. ' + error.message;
+          ui.downloadUpdate.textContent = 'Повторить';
+
+        } finally {
+          busy = ui.downloadUpdate.disabled = ui.skipUpdate.disabled = false;
+        }
+      };
+      if (!ui.updateDialog.open) ui.updateDialog.showModal();
+    } finally { button.disabled = false; }
   }
-}).catch(()=>{});
+  button.onclick = check;
+  check().catch(() => {});
+}
