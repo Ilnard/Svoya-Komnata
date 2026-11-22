@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#101615"><title>Своя комната</title>
 <link rel="icon" href="/icon.ico" sizes="any"><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script><script defer src="/room-tools.js"></script><script defer src="/lobby-tools.js"></script><script defer src="/view-quality.js"></script><script defer src="/room-media.js"></script>
 <script defer src="/extras.js"></script><script defer src="/player.js"></script><script defer src="/prism.js"></script></head>
-<body><div class="prism-art" aria-hidden="true"><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div></div>
+<body><svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs><clipPath id="light-ribbon" clipPathUnits="objectBoundingBox"><path d="M .87 .01 C .66 .20 .16 .28 .30 .52 C .41 .71 .73 .74 .93 .99 C .68 .84 .18 .86 .08 .61 C -.01 .36 .39 .16 .87 .01 Z"/></clipPath></defs></svg><div class="prism-art" aria-hidden="true"><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div><div class="prism-orbit"><i></i></div></div>
 <div class="app-shell">
 <header class="app-header">
   <div class="brand"><img src="/icon.png" alt="" width="42" height="42"><span>Своя комната</span></div>
@@ -64,10 +64,9 @@
           <button id="watchStart" class="primary" hidden>Смотреть демонстрацию</button>
           <button id="stageShare" class="secondary"><i data-icon="screen"></i>Показать экран</button>
         </div>
-        <div id="loadingScreen" hidden><i class="load-ring" aria-hidden="true"></i><p id="loadingText" role="status"></p><button id="showAvailable" class="secondary" hidden>Смотреть в доступном качестве</button></div>
         <video id="video" autoplay playsinline muted hidden></video>
       </div>
-      <div id="viewSettings" hidden><label>Разрешение<select id="viewHeight"><option value="480">480p</option><option value="720" selected>720p</option></select></label>
+      <div id="viewSettings" hidden><label>Разрешение<select id="viewHeight"><option value="144">144p</option><option value="240">240p</option><option value="360">360p</option><option value="480">480p</option><option value="720" selected>720p</option><option value="1080">1080p</option></select></label>
         <label>Лимит видеобитрейта<select id="viewRate"><option value="1">1 Мбит/с</option><option value="2">2 Мбит/с</option><option value="4" selected>4 Мбит/с</option><option value="6">6 Мбит/с</option><option value="8">8 Мбит/с</option></select></label></div>
       <div id="viewerTools" hidden><label>Звук демонстрации <output id="streamPercent">100%</output><input id="streamVolume" type="range" min="0" max="100" value="100"></label><button id="streamMute" class="secondary" aria-pressed="false">Без звука</button><button id="statsToggle" class="secondary" aria-expanded="false">Как идёт трансляция?</button></div>
       <section id="streamStats" hidden><pre id="statsValue">Сбор данных…</pre><button id="copyStats" class="secondary">Скопировать показатели</button></section>

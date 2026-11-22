@@ -1,6 +1,6 @@
-const heights = [480,720];
+const heights = [144,240,360,480,720,1080];
 const rates = [1,2,4,6,8];
-let previewGate;
+let activeRequest;
 
 // A view request is scoped to one presentation and one peer connection.
 async function applyViewRequest(peer, from, request, current) {
@@ -31,62 +31,24 @@ async function applyViewRequest(peer, from, request, current) {
   await signal(from,{viewAck:{token:request.token,sourceHeight,fps:source?.framesPerSecond,
     sourceFrames:source?.frames,limited}},current);
 }
-function beginView(peer,ready=false) {
-  previewGate={peer,id:presentationId,token:crypto.randomUUID(),height:Number(ui.viewHeight.value),
-    rate:Number(ui.viewRate.value),start:performance.now(),sent:-Infinity,ready};
-  return previewGate;
-}
-function viewReady(watching,peer) {
-  ui.viewSettings.hidden=!watching;
-  ui.loadingScreen.hidden=!watching;
-  if(!watching){previewGate=undefined;return true;}
-  const gate=previewGate && previewGate.peer===peer && previewGate.id===presentationId ? previewGate : beginView(peer,previewGate?.id===presentationId && previewGate.ready);
-  if(peer && (!gate.ack || !gate.ready)){
-    const now=performance.now();
-    if(now-gate.sent>1200){
-      gate.sent=now;
-      signal(screenOwner,{viewRequest:{screen:gate.id,token:gate.token,height:gate.height,rate:gate.rate}},session).catch(()=>{});
-    }
-    const receiver=peer.screen?.receiver;
-    if(!gate.ready && receiver && gate.ack && !gate.sampling){
-      gate.sampling=true;
-      receiver.getStats().then(stats=>{
-        if(previewGate!==gate || gate.ready)return;
-        const video=[...stats.values()].find(s=>s.type==='inbound-rtp' && s.kind==='video');
-        if(!video)return;
-        const decoded=video.framesDecoded||0;
-        const displayed=ui.video.videoHeight;
-        gate.firstDecoded??=decoded;
-        const matches=displayed>=gate.height && displayed<=gate.height+2 && video.frameHeight===displayed;
-        // A still desktop can encode well below 30 fps even on a fast link.
-        const inputFps=gate.ack.fps;
-        const fpsOK=Number.isFinite(inputFps) ? (video.framesPerSecond||0)>=Math.min(30,inputFps*0.8) : decoded>gate.firstDecoded;
-        const still=gate.still && decoded>0 && ui.video.srcObject===peer.presentation;
-        if(!matches || (!still && (!fpsOK || gate.ack.limited))){gate.stableSince=undefined;return;}
-        gate.stableSince??=performance.now();
-        if((decoded>gate.firstDecoded || still) && performance.now()-gate.stableSince>=350 && ui.video.readyState>=2){
-          gate.ready=true;showScreen();
-        }
-      }).catch(()=>{}).finally(()=>{gate.sampling=false;});
-    }
+function updateViewRequest(watching, peer) {
+  ui.viewSettings.hidden = !watching;
+  if (!watching || !peer) { activeRequest = undefined; return; }
+  const height = Number(ui.viewHeight.value), rate = Number(ui.viewRate.value);
+  if (!activeRequest || activeRequest.peer !== peer || activeRequest.screen !== presentationId ||
+      activeRequest.height !== height || activeRequest.rate !== rate) {
+    activeRequest = {peer, screen:presentationId, height, rate, token:crypto.randomUUID(), sent:-Infinity};
   }
-  ui.loadingScreen.hidden=gate.ready;
-  ui.showAvailable.hidden=performance.now()-gate.start<6500;
-  const small=gate.ack?.sourceHeight<gate.height;
-  ui.loadingText.textContent=small ? 'Высота источника — '+gate.ack.sourceHeight+' пикс. Выбери меньшее разрешение или открой исходную картинку.' :
-    (!ui.showAvailable.hidden ? 'Выбранное качество пока недоступно. Можно подождать или изменить настройки.' : 'Подготовка демонстрации · '+gate.height+'p');
-  return gate.ready;
+  const request = activeRequest;
+  if (request.acked || performance.now() - request.sent < 1200) return;
+  request.sent = performance.now();
+  const {screen, token} = request;
+  signal(screenOwner, {viewRequest:{screen, token, height, rate}}, session).catch(()=>{});
 }
-function acceptViewAck(peer,ack){
-  const gate=previewGate;
-  if(gate && gate.peer===peer && gate.token===ack?.token){
-    gate.still=Number.isFinite(ack.sourceFrames) && ack.sourceFrames>0 && ack.sourceFrames===gate.ack?.sourceFrames;
-    gate.ack=ack;
-  }
+function acceptViewAck(peer, ack) {
+  if (activeRequest && activeRequest.peer === peer && activeRequest.token === ack?.token) activeRequest.acked = true;
 }
-ui.showAvailable.onclick=()=>{if(previewGate){previewGate.ready=true;showScreen();}};
 for(const select of [ui.viewHeight,ui.viewRate])select.onchange=()=>{
-  if(previewGate)beginView(previewGate.peer,previewGate.ready);
   showScreen();
   savePreference({viewHeight:Number(ui.viewHeight.value),viewRate:Number(ui.viewRate.value)});
 };

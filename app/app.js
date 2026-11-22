@@ -207,22 +207,10 @@ function showScreen() {
   const stream = local ? display : watching ? peer?.presentation : null;
   ui.watchStart.hidden = !screenOwner || local || watching;
   ui.watchStop.hidden = !watching;
-  let track = stream?.getVideoTracks()[0];
-  if (watching && peer && ui.video.srcObject !== stream) {
-    if (!track || track.muted) {
-      peer.videoReadyAt = undefined;
-      track = null;
-    } else {
-      peer.videoReadyAt ??= performance.now();
-      // A silent or unavailable system track must not block the picture indefinitely.
-      if (presentationHasAudio && !stream.getAudioTracks().some(t => !t.muted) &&
-          performance.now() - peer.videoReadyAt < 1000) track = null;
-    }
-  } else if (peer && !watching) peer.videoReadyAt = undefined;
+  const track = stream?.getVideoTracks()[0];
   ui.delayControl.hidden = !track || local || !('jitterBufferTarget' in RTCRtpReceiver.prototype);
-  const ready=viewReady(watching,peer);
-  ui.video.classList.toggle('warming',watching && !ready);
-  ui.video.muted = Boolean(!watching || !ready || deafened || streamSilent);
+  updateViewRequest(watching,peer);
+  ui.video.muted = Boolean(!watching || deafened || streamSilent);
   ui.video.volume = ui.streamVolume.valueAsNumber/100;
   updateViewerTools(watching);
   if (ui.video.srcObject !== (track ? stream : null)) {
@@ -231,8 +219,8 @@ function showScreen() {
   }
   ui.video.hidden = !track;
   ui.streamEmpty.hidden = watching || Boolean(track);
-  ui.fullscreen.hidden = !track || !ready;
-  ui.streamLabel.textContent = watching ? (ready?'Идёт демонстрация':'Подключаем экран…') : screenOwner ? 'Идёт демонстрация' : 'Вы в комнате';
+  ui.fullscreen.hidden = !track;
+  ui.streamLabel.textContent = screenOwner ? 'Идёт демонстрация' : 'Вы в комнате';
 }
 async function createPeer(id, current) {
   const bridge = current.direct ? await api('bridge', { to: id }, current) : null;
@@ -681,7 +669,7 @@ ui.mic.onclick = mediaAction(async current => {
 });
 ui.screen.onclick = mediaAction(async current => {
   if (display) return stopScreen(current);
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: {width:{ideal:1280,max:1280},height:{ideal:720,max:720},frameRate:{ideal:60,max:60}}, audio: (Boolean(window.roomDevices)||ui.shareAudio.checked) && Boolean(navigator.mediaDevices.getSupportedConstraints().restrictOwnAudio) && {restrictOwnAudio:true,echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}} });
+  const stream = await navigator.mediaDevices.getDisplayMedia({ video: {width:{ideal:1920,max:1920},height:{ideal:1080,max:1080},frameRate:{ideal:60,max:60}}, audio: (Boolean(window.roomDevices)||ui.shareAudio.checked) && Boolean(navigator.mediaDevices.getSupportedConstraints().restrictOwnAudio) && {restrictOwnAudio:true,echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}} });
   stream.getVideoTracks()[0].contentHint = 'motion';
   for (const audio of stream.getAudioTracks()) {
     if (window.roomDevices || audio.getSettings().restrictOwnAudio === true) audio.contentHint = 'music';

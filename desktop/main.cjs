@@ -96,7 +96,7 @@ async function start() {
     if(typeof patch.shareAudio==='boolean')valid.shareAudio=patch.shareAudio;
     if(['internet','lan'].includes(patch.mode))valid.mode=patch.mode;
     if(Array.isArray(patch.recent)) valid.recent=patch.recent.filter(c=>typeof c==='string' && c.length<6000).slice(0,8);
-    if([480,720].includes(patch.viewHeight))valid.viewHeight=patch.viewHeight;
+    if([144,240,360,480,720,1080].includes(patch.viewHeight))valid.viewHeight=patch.viewHeight;
     if([1,2,4,6,8].includes(patch.viewRate))valid.viewRate=patch.viewRate;
     if(Number.isInteger(patch.streamVolume)&&patch.streamVolume>=0&&patch.streamVolume<=100)valid.streamVolume=patch.streamVolume;
     if(['mint','ocean','dusk','amber','white','graphite','prism'].includes(patch.theme))valid.theme=patch.theme;

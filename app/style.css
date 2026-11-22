@@ -384,3 +384,24 @@ html[data-theme="prism"] .transport{justify-content:center;}
 .delete-message{margin-left:auto;padding:0;min-height:24px;width:24px;background:transparent;color:var(--muted);font-size:18px;}
 
 #lobby{position:relative;}#menuVersion{position:absolute;bottom:12px;left:24px;}#settingsVersion{display:block;margin:12px 0;color:var(--muted);font-size:11px;}
+
+/* Keep panel geometry consistent while each palette supplies its surfaces. */
+html:not([data-theme="prism"]) .room {padding:0 18px 18px;gap:18px;}
+html:not([data-theme="prism"]) .room-layout {gap:18px;border:0;background:transparent;}
+html:not([data-theme="prism"]) :is(.room-header,.people-panel,.stage-panel,.chat-panel,.call-bar) {
+  border:1px solid var(--line);border-radius:19px;
+}
+@media(max-width:800px){
+  html:not([data-theme="prism"]) .room {padding:0 10px 10px;gap:12px;}
+  html:not([data-theme="prism"]) .room-layout {gap:12px;}
+}
+html[data-theme="prism"] .prism-orbit {filter:blur(clamp(9px,1.1vw,20px));}
+html[data-theme="prism"] .prism-orbit:nth-child(n) i {
+  clip-path:url(#light-ribbon);border-radius:0;filter:none;
+  background:linear-gradient(148deg,#70097e 8%,#ed05a8 37%,#ffad16 57%,#ffd039 66%,#db128b 81%,#68067b 98%);
+}
+html[data-theme="prism"] .prism-orbit:first-child {left:15%;top:39%;width:31vw;height:45vh;}
+html[data-theme="prism"] .prism-orbit:nth-child(2) {left:32%;top:-13%;width:30vw;height:36vh;rotate:160deg;}
+html[data-theme="prism"] .prism-orbit:nth-child(2) i {background:linear-gradient(125deg,#950090 10%,#c500b6 45%,#00cad1 70%,#112139);}
+html[data-theme="prism"] .prism-orbit:nth-child(3) {left:88%;top:22%;width:24vw;height:45vh;rotate:174deg;}
+html[data-theme="prism"] .prism-orbit:nth-child(4) i {background:linear-gradient(135deg,#210c3d,#8916be,transparent);}
