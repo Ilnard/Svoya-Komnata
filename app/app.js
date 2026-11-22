@@ -235,7 +235,7 @@ function showScreen() {
   ui.streamLabel.textContent = watching ? (ready?'Идёт демонстрация':'Подключаем экран…') : screenOwner ? 'Идёт демонстрация' : 'Вы в комнате';
 }
 async function createPeer(id, current) {
-  const bridge = (current.direct||current.relays.has(id)) ? await api('bridge', { to: id }, current) : null;
+  const bridge = current.direct ? await api('bridge', { to: id }, current) : null;
   if (session !== current) return null;
   const pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: [] });
   const audio = document.createElement('audio');
@@ -263,7 +263,7 @@ async function createPeer(id, current) {
     }
   };
   pc.onicecandidate = ({ candidate }) => {
-    if (candidate && !peer.bridge && peers.get(id)===peer && session === current) signal(id, { candidate }, current).catch(error => notify(error.message, true));
+    if (candidate && !current.direct && session === current) signal(id, { candidate }, current).catch(error => notify(error.message, true));
   };
   return peer;
 }
@@ -298,7 +298,7 @@ async function receive(peer, from, payload, current) {
   if (payload.viewAck){acceptViewAck(peer,payload.viewAck);return;}
   if (payload.description) {
     const description = { ...payload.description };
-    if (peer.bridge) {
+    if (current.direct) {
       description.sdp = description.sdp.split('\r\n').filter(line => !line.startsWith('a=candidate:') && line !== 'a=end-of-candidates').join('\r\n');
     }
     await pc.setRemoteDescription(description);
@@ -455,24 +455,6 @@ function render(state, current) {
   for(const button of ui.messages.querySelectorAll('.delete-message'))button.hidden=!me?.admin;
   updateControls();
 }
-// Compare the sender's packet counter with this specific voice receiver. Silence
-// and a muted microphone cannot trigger recovery when the sender is idle.
-async function checkVoice(peer,member,current){
-  const now=performance.now();
-  if(!peer.voice || now-(peer.sampledAt??-Infinity)<1000)return false;
-  peer.sampledAt=now;
-  const [outbound,inbound]=await Promise.all([peer.voice.sender.getStats(),peer.voice.receiver.getStats()]);
-  const sentReport=[...outbound.values()].find(r=>r.type==='outbound-rtp'&&r.kind==='audio');
-  const receivedReport=[...inbound.values()].find(r=>r.type==='inbound-rtp'&&r.kind==='audio');
-  if(!sentReport||!receivedReport)return false;
-  const sent=sentReport.packetsSent,received=receivedReport.packetsReceived;
-  current.voiceSent[member.id]=sent;
-  const previous=peer.flow;
-  const advancing=member.microphone && !member.muted && Number.isSafeInteger(member.voiceSent) && previous && member.voiceSent>previous.remote;
-  const stalled=advancing && received===previous.received;
-  peer.flow={remote:member.voiceSent,received,since:stalled?(previous.since??now):null};
-  return stalled && now-peer.flow.since>=6000;
-}
 async function poll(current) {
   clearTimeout(pollTimer);
   pollTimer = undefined;
@@ -480,17 +462,8 @@ async function poll(current) {
     const state = await api('poll', { watching:watchingId || null, epoch:current.epoch, microphone:Boolean(microphone) }, current);
     connectionLostAt = undefined;
     if (session !== current) return;
-    if(current.localRoute!==undefined && current.localRoute!==state.localRoute){
-      current.epoch++;
-      current.localRoute=state.localRoute;
-      // Publish the new epoch before sending offers for it.
-      current.wake=true;
-      return;
-    }
-    current.localRoute=state.localRoute;
     const active = new Set(state.members.map(member => member.id));
     for (const m of state.members) {
-      if(m.lanRelay && (current.epoch || m.epoch || current.retries[m.id] || m.retry))current.relays.add(m.id);
       const local = current.epoch + '.' + (current.retries[m.id] || 0);
       const remote = (m.epoch || 0) + '.' + (m.retry || 0);
       current.generations.set(m.id, current.id < m.id ? local+'/'+remote : remote+'/'+local);
@@ -499,10 +472,8 @@ async function poll(current) {
       if (!active.has(id) || peer.generation !== current.generations.get(id)) {
         closePeer(peer);
         peers.delete(id);
-        delete current.voiceSent[id];
-        if(!active.has(id))current.volumes.delete(id);
         Array.from(ui.members.children).find(row => row.dataset.id === id)?.remove();
-        if (peer.bridge) await api('bridge-close', { to: id }, current);
+        if (current.direct) await api('bridge-close', { to: id }, current);
       }
     }
     for (const { id } of state.members) {
@@ -518,15 +489,7 @@ async function poll(current) {
     }
     if (session !== current) return;
     for (const [id, peer] of peers) {
-      if (peer.pc.connectionState === 'connected'){
-        peer.started=Date.now();
-        const member=state.members.find(m=>m.id===id);
-        if(await checkVoice(peer,member,current).catch(()=>false)){
-          current.retries[id]=(current.retries[id]||0)+1;
-          current.wake=true;
-          status('Восстанавливаем голос…','waiting');
-        }else if(peer.audio.paused && peer.audio.srcObject && !peer.audio.muted)peer.audio.play().catch(()=>{});
-      }
+      if (peer.pc.connectionState === 'connected') peer.started = Date.now();
       else if (peer.pc.connectionState==='failed' || (peer.pc.connectionState==='disconnected' && Date.now()-peer.started>800) || Date.now()-peer.started > 6000) current.retries[id] = (current.retries[id] || 0) + 1;
     }
     screenOwner = state.screen;
@@ -558,7 +521,7 @@ async function poll(current) {
       reset();
       notify('Комната закрыта или хост недоступен. ' + error.message, true);
     }
-    if (session === current) status(Date.now()-connectionLostAt>8000?'Хост недоступен · проверь доступ VPN к сети хоста. Повторяем подключение…':'Связь прервана · переподключение…','waiting');
+    if (session === current) status('Связь прервана · переподключение…', 'waiting');
   } finally {
     if (session === current) pollTimer = setTimeout(() => poll(current), current.wake ? 0 : connectionLostAt ? 200 : 450);
     current.wake = false;
@@ -604,9 +567,9 @@ async function enter(op) {
   if (op === 'join' && !invitation && !internetInvite) { notify('Вставь код приглашения целиком', true); ui.invite.focus(); return; }
   const target = op === 'join' ? (internetInvite ? code : invitation[1]) : undefined;
   await extrasReady;
-  const result = await api(op, { name,lanRelay:true,greeting:personalGreeting, archiveId:op==='create'?ui.archiveSelect.value:undefined,title:op==='create'?ui.archiveTitle.value:undefined,avatar:profilePhoto, target, mode: ui.mode.value, key: invitation?.[2] });
+  const result = await api(op, { name,greeting:personalGreeting, archiveId:op==='create'?ui.archiveSelect.value:undefined,title:op==='create'?ui.archiveTitle.value:undefined,avatar:profilePhoto, target, mode: ui.mode.value, key: invitation?.[2] });
   const { id, host, key, addresses, token } = result;
-  session = { relays:new Set(),volumes:new Map(),generations:new Map(),epoch:0,retries:{},voiceSent:{},id, host, key, target, token, direct: result.direct, invitation: result.invitation };
+  session = { volumes:new Map(),generations:new Map(),epoch:0,retries:{},id, host, key, target, token, direct: result.direct, invitation: result.invitation };
   if(op==='join') rememberRoom(code);
   ui.selfName.textContent = name;
   const self = avatar(name);

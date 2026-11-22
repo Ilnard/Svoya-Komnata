@@ -26,7 +26,22 @@ function open(id,title,mode){
     const settings={...(row?JSON.parse(row.json):{title}),mode,opened:Date.now()};
     db.prepare('INSERT OR REPLACE INTO settings VALUES(1,?)').run(JSON.stringify(settings));
     const page=(before=Number.MAX_SAFE_INTEGER)=>db.prepare('SELECT seq,json FROM messages WHERE seq<? ORDER BY seq DESC LIMIT 100').all(before).reverse().map(r=>({...JSON.parse(r.json),seq:r.seq}));
-    return {id,settings,page,
+    let cached;
+    const snapshot=()=>{
+      const changes=db.prepare('SELECT total_changes() AS n').get().n;
+      if(cached?.changes===changes)return cached;
+      const file=filename(id);
+      const bytes=fs.readFileSync(file);
+      cached={changes,size:bytes.length,digest:require('crypto').createHash('sha256').update(bytes).digest('hex'),id};
+      return cached;
+    };
+    return {id,settings,page,snapshot,
+      snapshotChunk(digest,offset){
+        if(snapshot().digest!==digest)throw Object.assign(Error('Архив изменился'),{status:409});
+        if(!Number.isSafeInteger(offset)||offset<0||offset>=cached.size)throw Error('Некорректная позиция');
+        const fd=fs.openSync(filename(id),'r');
+        try{const bytes=Buffer.alloc(Math.min(49152,cached.size-offset));fs.readSync(fd,bytes,0,bytes.length,offset);return bytes.toString('base64');}finally{fs.closeSync(fd);}
+      },
 hasAdmin:address=>Boolean(address&&db.prepare('SELECT 1 FROM admins WHERE address=?').get(address)),rememberAdmin(address){if(address)db.prepare('INSERT OR IGNORE INTO admins VALUES(?)').run(address);},
       deleteMessage(id){
         const row=db.prepare("SELECT seq,json FROM messages WHERE json_extract(json,'$.id')=?").get(id);

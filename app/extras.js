@@ -129,5 +129,12 @@ window.roomDevices?.checkUpdate().then(result=>{
   const button=document.createElement('button');button.className='secondary';button.type='button';
   button.textContent=result?.state==='available'?'Доступна версия '+result.version:'Версии на GitHub';
   button.onclick=()=>window.roomDevices.openReleases();ui.settingsVersion.after(button);
-  if(result?.state==='available'){const banner=button.cloneNode(true);banner.onclick=button.onclick;ui.menuVersion.after(banner);}
+  if(result?.state==='available'){
+    ui.updateTitle.textContent='Доступна версия '+result.version;
+    ui.updateText.textContent=result.required?'Для входа в комнату установи новую версию приложения.':'Можно установить обновление сейчас или продолжить звонки на текущей версии.';
+    ui.downloadUpdate.onclick=()=>window.roomDevices.openReleases();
+    ui.skipUpdate.hidden=result.required;ui.skipUpdate.onclick=()=>ui.updateDialog.close();
+    ui.updateDialog.oncancel=event=>{if(result.required)event.preventDefault();};
+    ui.updateDialog.showModal();
+  }
 }).catch(()=>{});

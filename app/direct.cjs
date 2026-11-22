@@ -40,16 +40,14 @@ function parseInvite(code) {
 const encodeInvite = data => 'SK1.' + Buffer.from(JSON.stringify(data)).toString('base64url');
 function tlsOptions(endpoint) {
   // The invitation pins a per-room self-signed certificate. Chain verification stays enabled.
-  return { ca: endpoint.cert, minVersion: 'TLSv1.2' };
+  return { ca: endpoint.cert, checkServerIdentity: () => undefined, minVersion: 'TLSv1.2' };
 }
 function remoteCommand(endpoint, data) {
   return new Promise((resolve, reject) => {
     const request = https.request({
       hostname: endpoint.address, port: endpoint.port, path: '/room', method: 'POST',
-      ...tlsOptions(endpoint), agent:require('./routes.cjs').internet, signal:AbortSignal.timeout(data.op==='poll'?2000:7000), headers: { 'Content-Type': 'application/json' },
+      ...tlsOptions(endpoint), signal:AbortSignal.timeout(data.op==='poll'?2000:7000), headers: { 'Content-Type': 'application/json' },
     }, response => {
-      response.on('error',reject);
-      response.once('aborted',()=>reject(new Error('Соединение с хостом прервано')));
       let text = '';
       response.on('data', chunk => {
         text += chunk;
@@ -68,8 +66,18 @@ function remoteCommand(endpoint, data) {
     request.end(JSON.stringify(data));
   });
 }
-function attachMedia(server,authorize){
-  const sockets=new Map();
+async function startHost({ command, authorize, readBody, answer, onFailure }) {
+  const cert = identity();
+  const sockets = new Map();
+  const server = https.createServer({ ...cert, minVersion: 'TLSv1.2' }, async (req, res) => {
+    try {
+      if (req.url !== '/room' || req.method !== 'POST') return answer(res, { error: 'Недоступно' }, 404);
+      answer(res, command(await readBody(req),false,req.socket.remoteAddress));
+    } catch (error) { answer(res, { error: error.message }, error.status || 400); }
+  });
+  server.requestTimeout = 10_000;
+  server.headersTimeout = 10_000;
+  server.maxConnections = 64;
   const wsServer = new WebSocketServer({ noServer: true, maxPayload: 66_000, perMessageDeflate: false });
   server.on('upgrade', (req, socket, head) => {
     try {
@@ -94,21 +102,6 @@ function attachMedia(server,authorize){
       });
     } catch { socket.destroy(); }
   });
-  return {sockets,wsServer};
-}
-async function startHost({ command, authorize, readBody, answer, onFailure }) {
-  const cert = identity();
-
-  const server = https.createServer({ ...cert, minVersion: 'TLSv1.2' }, async (req, res) => {
-    try {
-      if (req.url !== '/room' || req.method !== 'POST') return answer(res, { error: 'Недоступно' }, 404);
-      answer(res, command(await readBody(req),false,req.socket.remoteAddress));
-    } catch (error) { answer(res, { error: error.message }, error.status || 400); }
-  });
-  server.requestTimeout = 10_000;
-  server.headersTimeout = 10_000;
-  server.maxConnections = 64;
-  const {sockets,wsServer}=attachMedia(server,authorize);
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '0.0.0.0', resolve); });
   let mapping;
   let closed = false;
@@ -142,12 +135,12 @@ class MediaBridge {
     this.peers = new Map();
     this.closed = false;
     this.touched = Date.now();
-    if(!endpoint.lan)this.connect();
+    this.connect();
   }
   connect() {
     if (this.closed) return;
-    this.ws = new WebSocket((this.endpoint.lan?'ws://':'wss://') + this.endpoint.address + ':' + this.endpoint.port + '/media', {
-      ...(this.endpoint.lan?{}:tlsOptions(this.endpoint)), agent:this.endpoint.lan?require('./routes.cjs').lan:require('./routes.cjs').internet, headers: { 'X-Room-Auth': Buffer.from(JSON.stringify(this.credentials)).toString('base64url') },
+    this.ws = new WebSocket('wss://' + this.endpoint.address + ':' + this.endpoint.port + '/media', {
+      ...tlsOptions(this.endpoint), headers: { 'X-Room-Auth': Buffer.from(JSON.stringify(this.credentials)).toString('base64url') },
       handshakeTimeout: 2500, maxPayload: 66_000, perMessageDeflate: false,
     });
     const socket = this.ws;
@@ -174,7 +167,7 @@ class MediaBridge {
     this.ws.on('close', () => { if (!this.closed && this.ws===socket) this.retry = setTimeout(() => this.connect(), 200); });
   }
   reconnect() {
-    if(this.closed||!this.ws)return;
+    if(this.closed)return;
     clearTimeout(this.retry);
     const old=this.ws;
     this.connect();
@@ -182,7 +175,6 @@ class MediaBridge {
   }
   async peer(id) {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error('Некорректный участник');
-    if(!this.ws)this.connect();
     if (this.peers.has(id)) return this.peers.get(id).ready;
     if (this.peers.size >= 7) throw new Error('Превышено число участников');
     const socket = dgram.createSocket('udp4');
@@ -208,8 +200,8 @@ class MediaBridge {
   close() {
     this.closed = true;
     clearTimeout(this.retry);
-    this.ws?.terminate();
+    this.ws.terminate();
     for (const id of this.peers.keys()) this.remove(id);
   }
 }
-module.exports = { attachMedia,startHost, MediaBridge, remoteCommand, parseInvite, encodeInvite };
+module.exports = { startHost, MediaBridge, remoteCommand, parseInvite, encodeInvite };

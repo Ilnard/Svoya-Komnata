@@ -39,8 +39,6 @@ function remove(id) {
   bridges.get(id)?.close();
   bridges.delete(id);
   directHost?.drop(id);
-  if(room.host===id){for(const socket of lanMedia.sockets.values())socket.terminate();}
-  else lanMedia.sockets.get(id)?.terminate();
   if (id === room.host) {
     room.archive.close();
     listener?.close();listener=undefined;
@@ -62,11 +60,11 @@ function authorize(data) {
   if (!member || member.token !== data.token) fail('Сеанс завершён или неверный ключ участника', 404);
   return member;
 }
-let interfaces='', routeVersion=0;
+let interfaces='';
 const routeMonitor=setInterval(()=>{
-
+  if (!bridges.size) {interfaces='';return;}
   const current=Object.values(os.networkInterfaces()).flat().map(n=>n.address).sort().join('|');
-  if(interfaces && interfaces!==current){routeVersion++;require('./routes.cjs').reset();for(const bridge of bridges.values())bridge.reconnect();}
+  if(interfaces && interfaces!==current) for(const bridge of bridges.values()) bridge.reconnect();
   interfaces=current;
 },500);
 routeMonitor.unref();
@@ -99,7 +97,7 @@ function command(data, local = false, address) {
     room.members.set(id, { name, token, avatar:typeof data.avatar==='string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data.avatar) && data.avatar.length<24000 ? data.avatar : '', admin: data.op === 'create', muted: false, seen: Date.now(), signals: [], microphone: null });
     const entrant=room.members.get(id);
     entrant.address=address;entrant.admin ||= room.archive.hasAdmin(address);
-    entrant.greetingEvents=[];entrant.lanRelay=data.lanRelay===true;
+    entrant.greetingEvents=[];
     if(typeof data.greeting==='string' && data.greeting.length<=64000 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.greeting) && data.greeting){
       entrant.greeting=data.greeting;
       for(const listener of room.members.values()){
@@ -121,19 +119,20 @@ function command(data, local = false, address) {
       room.chat=room.chat.filter(m=>m.id!==data.messageId);
       return {};
     case 'music': return require('./music.cjs').command(room,member,data,fail);
+    case 'archive-info': return room.archive.snapshot();
+    case 'archive-chunk': return {chunk:room.archive.snapshotChunk(data.digest,data.offset)};
     case 'history': return {messages:room.archive.page(Number.isSafeInteger(data.before)?data.before:undefined)};
     case 'greeting': return {sound:room.members.get(data.subject)?.greeting||''};
     case 'profile': return {avatar:room.members.get(data.subject)?.avatar || ''};
     case 'poll':
       member.watching = room.screen && data.id !== room.screen && data.watching === room.screenId ? room.screenId : null;
       if (Number.isSafeInteger(data.epoch)) member.epoch = data.epoch;
-      member.voiceSent=Object.fromEntries(Array.from(room.members.keys()).filter(id=>Number.isSafeInteger(data.voiceSent?.[id])).map(id=>[id,data.voiceSent[id]]));
       member.retries = Object.fromEntries(Array.from(room.members.keys())
         .filter(id => Number.isSafeInteger(data.retries?.[id]))
         .map(id => [id, data.retries[id]]));
       if (typeof data.microphone === 'boolean') member.microphone = data.microphone;
       return {
-        members: Array.from(room.members, ([id, m]) => ({ id, lanRelay:m.lanRelay,hasAvatar:Boolean(m.avatar), voiceSent:m.voiceSent?.[data.id], watching:m.watching, epoch:m.epoch || 0, retry:m.retries?.[data.id] || 0, name: m.name, admin:m.admin, muted:m.muted, microphone: m.muted ? false : m.microphone })),
+        members: Array.from(room.members, ([id, m]) => ({ id, hasAvatar:Boolean(m.avatar),  watching:m.watching, epoch:m.epoch || 0, retry:m.retries?.[data.id] || 0, name: m.name, admin:m.admin, muted:m.muted, microphone: m.muted ? false : m.microphone })),
         music:require('./music.cjs').snapshot(room),greetings:member.greetingEvents.splice(0),title:room.archive.settings.title,chat: room.chat,
         screen: room.screen,
         screenId: room.screen ? room.screenId : null,
@@ -185,10 +184,6 @@ const host = http.createServer(async (req, res) => {
     answer(res, command(await body(req),false,req.socket.remoteAddress));
   } catch (error) { answer(res, { error: error.status ? error.message : 'Некорректный запрос' }, error.status || 400); }
 });
-const lanMedia=direct.attachMedia(host,auth=>{
-  if(!room||room.direct)fail('Недоступный медиаканал',403);
-  return authorize(auth);
-});
 let listenError;
 host.on('error', error => { listenError = error.code; });
 host.listen(port, '0.0.0.0');
@@ -223,8 +218,7 @@ const client = http.createServer(async (req, res) => {
     if(data.op==='archives')return answer(res,archives.list());
     if(data.op==='discover')return answer(res,await discovery.discover());
     function clientResult(result,status){
-      if(data.op==='poll'&&result.members)result.localRoute=routeVersion;
-      return answer(res,result,status);
+return answer(res,result,status);
     }
     const activeBridge = bridges.get(data.id);
     if (activeBridge && activeBridge.credentials.token === data.token) activeBridge.touched = Date.now();
@@ -292,7 +286,6 @@ const client = http.createServer(async (req, res) => {
       if (data.op === 'create' && (listenError || !host.listening)) fail('TCP-порт 47832 занят или недоступен');
       const result = command(data, true);
       if (data.op === 'create') {
-        if(data.lanRelay)bridges.set(result.id,new direct.MediaBridge({lan:true,address:'127.0.0.1',port:host.address().port},result));
         announce();
         result.addresses = Object.values(os.networkInterfaces()).flat()
           .filter(item => item.family === 'IPv4' && !item.internal).map(item => item.address);
@@ -301,20 +294,13 @@ const client = http.createServer(async (req, res) => {
     }
     if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(target) || target.split('.').some(part => Number(part) > 255 || String(Number(part)) !== part)
         || !/^[a-f0-9]{36}$/.test(data.key)) fail('Проверь адрес и код приглашения');
-    try{
-      const remote=await new Promise((resolve,reject)=>{
-        const req=http.request({hostname:target,port,path:'/room',method:'POST',agent:require('./routes.cjs').lan,signal:AbortSignal.timeout(data.op==='poll'?2200:6500)},response=>{
-          let body='';
-          response.setEncoding('utf8');response.on('error',reject);
-          response.on('data',part=>{body+=part;if(body.length>500000)response.destroy(Error('Слишком большой ответ'));});
-          response.on('end',()=>{try{resolve({value:JSON.parse(body),status:response.statusCode});}catch(e){reject(e);}});
-        });
-        req.on('error',reject);req.end(JSON.stringify(data));
+    let remote;
+    try {
+      remote = await fetch('http://' + target + ':' + port + '/room', {
+        method: 'POST', body: JSON.stringify(data), redirect: 'error', signal: AbortSignal.timeout(data.op==='poll'?2000:4500),
       });
-      if(remote.status===200&&data.op==='join'&&data.lanRelay)bridges.set(remote.value.id,new direct.MediaBridge({lan:true,address:target,port},remote.value));
-      if(data.op==='leave'){bridges.get(data.id)?.close();bridges.delete(data.id);}
-      clientResult(remote.value,remote.status);
-    }catch{fail('Хост недоступен. Проверь доступ VPN к локальной сети и адрес комнаты',503);}
+    } catch { fail('Хост недоступен. Проверь сеть, адрес и брандмауэр', 503); }
+    clientResult(await remote.json(),remote.status);
   } catch (error) {
     answer(res, { error: error.status ? error.message : 'Некорректный запрос' }, error.status || 400);
   }

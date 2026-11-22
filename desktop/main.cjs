@@ -60,7 +60,7 @@ async function start() {
       if(!/^[0-9]+[.][0-9]+[.][0-9]+$/.test(latest))return {state:'none'};
       const current=require('./package.json').version.split('.').map(Number),next=latest.split('.').map(Number);
       const index=next.findIndex((n,i)=>n!==current[i]);
-      return {state:index>=0&&next[index]>current[index]?'available':'current',version:latest};
+      return {state:index>=0&&next[index]>current[index]?'available':'current',version:latest,required:index>=0&&index<2&&next[index]>current[index]};
     }catch{return {state:'unavailable'};}
   });
   ipcMain.handle('prefs:get',event=>trusted(event)?preferences.get():{});
