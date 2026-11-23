@@ -468,3 +468,6 @@ html[data-theme="prism"] .call-bar .leave {background:linear-gradient(135deg,#79
   content:"";display:inline-block;width:12px;height:15px;box-sizing:border-box;
   border-inline:4px solid currentColor;vertical-align:middle;
 }
+
+/* Optical centering for the right-pointing play glyph. */
+.transport #songPlay:not(.playing) {padding-left:4px;}

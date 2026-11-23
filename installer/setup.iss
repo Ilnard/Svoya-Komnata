@@ -1,5 +1,5 @@
 #define AppVersion GetStringFileInfo("room\desktop\SvoyaKomnata.exe", "ProductVersion")
-#define RoomVersion "0.23.9"
+#define RoomVersion "0.23.10"
 [Setup]
 AppId=SvoyaKomnataDesktopEXE
 AppName=Своя комната
