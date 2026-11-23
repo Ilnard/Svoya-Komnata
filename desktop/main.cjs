@@ -6,6 +6,9 @@ const path = require('node:path');
 const root = path.resolve(process.resourcesPath, '../..');
 const icon = path.join(root, 'icon.ico');
 const preferences=require('./preferences.cjs')(app.getPath('documents'),app.getPath('userData'));
+function captionOverlay(theme) {
+  return {color:'#00000000',symbolColor:theme==='white'?'#202732':'#f2ecf7',height:28};
+}
 const gpuEnabled=preferences.get().gpu!==false;
 if (!gpuEnabled) app.disableHardwareAcceleration();
 let win, tray, server, origin, quitting = false;
@@ -104,6 +107,7 @@ async function start() {
     if(typeof patch.greeting==='string'&&patch.greeting.length<=64000&&/^[A-Za-z0-9+/]*={0,2}$/.test(patch.greeting))valid.greeting=patch.greeting;
     for(const [key,min,max] of [['songVolume',0,100],['peopleWidth',140,900],['chatWidth',180,1200]])if(Number.isInteger(patch[key])&&patch[key]>=min&&patch[key]<=max)valid[key]=patch[key];
     preferences.save(valid);
+    if(valid.theme)win.setTitleBarOverlay(captionOverlay(valid.theme));
   });
   ipcMain.handle('gpu:get',event=>trusted(event) && gpuEnabled);
   ipcMain.handle('gpu:set',(event,gpu)=>{if(trusted(event) && typeof gpu==='boolean')preferences.save({gpu});});
@@ -127,7 +131,7 @@ async function start() {
       win.webContents.send('capture:list',sources.map(s => ({id:s.id,name:s.name,preview:s.thumbnail.isEmpty() ? '' : s.thumbnail.toDataURL()})));
     } catch { pending = null; finish(null); }
   });
-  win = new BrowserWindow({width:1280,height:820,minWidth:560,minHeight:520,icon,backgroundColor:'#101615',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+  win = new BrowserWindow({width:1280,height:820,minWidth:560,minHeight:520,icon,backgroundColor:'#101615',titleBarStyle:'hidden',titleBarOverlay:captionOverlay(preferences.get().theme),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
   win.removeMenu();
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate',(event,url) => { if (url !== origin+'/') event.preventDefault(); });

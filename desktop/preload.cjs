@@ -15,3 +15,5 @@ contextBridge.exposeInMainWorld('roomDevices',{
   getMic: () => ipcRenderer.invoke('mic:get'),
   setMic: label => ipcRenderer.invoke('mic:set',label),
 });
+
+window.addEventListener('DOMContentLoaded',()=>document.documentElement.classList.add('desktop-caption'));

@@ -495,3 +495,11 @@ html[data-theme="prism"] .call-bar .leave {background:linear-gradient(135deg,#79
   }
   html:root .people-panel {max-height:260px;}
 }
+
+/* Native Windows caption buttons overlay the app's own background. */
+html.desktop-caption .app-header {padding-top:28px;}
+html.desktop-caption body::before {
+  content:"";position:absolute;left:env(titlebar-area-x,0px);top:0;
+  width:env(titlebar-area-width,calc(100% - 150px));height:28px;
+  z-index:5;app-region:drag;
+}
