@@ -400,8 +400,27 @@ html[data-theme="prism"] .prism-orbit:nth-child(n) i {
   clip-path:url(#light-ribbon);border-radius:0;filter:none;
   background:linear-gradient(148deg,#70097e 8%,#ed05a8 37%,#ffad16 57%,#ffd039 66%,#db128b 81%,#68067b 98%);
 }
-html[data-theme="prism"] .prism-orbit:first-child {left:15%;top:39%;width:31vw;height:45vh;}
-html[data-theme="prism"] .prism-orbit:nth-child(2) {left:32%;top:-13%;width:30vw;height:36vh;rotate:160deg;}
+html[data-theme="prism"] .prism-orbit:first-child {left:8%;top:28%;width:46vw;height:62vh;}
+html[data-theme="prism"] .prism-orbit:nth-child(2) {left:19%;top:-15%;width:46vw;height:47vh;rotate:160deg;}
 html[data-theme="prism"] .prism-orbit:nth-child(2) i {background:linear-gradient(125deg,#950090 10%,#c500b6 45%,#00cad1 70%,#112139);}
-html[data-theme="prism"] .prism-orbit:nth-child(3) {left:88%;top:22%;width:24vw;height:45vh;rotate:174deg;}
+html[data-theme="prism"] .prism-orbit:nth-child(3) {left:74%;top:12%;width:34vw;height:60vh;rotate:174deg;}
 html[data-theme="prism"] .prism-orbit:nth-child(4) i {background:linear-gradient(135deg,#210c3d,#8916be,transparent);}
+
+html[data-theme="prism"] .prism-art {
+  background:radial-gradient(ellipse at 69% 73%,#1e1649 0,transparent 46%),
+             radial-gradient(ellipse at 22% 28%,#2b0c31 0,transparent 52%);
+}
+html[data-theme="prism"] .prism-orbit:nth-child(5) {
+  left:45%;top:49%;width:42vw;height:58vh;rotate:-62deg;opacity:.62;
+  animation-duration:29s;animation-delay:-9s;
+}
+html[data-theme="prism"] .prism-orbit:nth-child(5) i {
+  background:linear-gradient(145deg,#41319d,#2d969f 40%,#4766c2 62%,#681f90);
+}
+html[data-theme="prism"] .prism-orbit:nth-child(6) {
+  left:50%;top:1%;width:32vw;height:37vh;rotate:68deg;opacity:.44;
+  animation-duration:27s;animation-delay:-17s;
+}
+html[data-theme="prism"] .prism-orbit:nth-child(6) i {
+  background:linear-gradient(145deg,#30275e,#8743bc 42%,#d05195 76%,#49235e);
+}
