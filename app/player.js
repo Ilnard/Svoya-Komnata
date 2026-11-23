@@ -67,7 +67,7 @@ function renderMusic(state,current){
   ui.policyRow.hidden=current.host!==current.id;ui.songPolicy.checked=m.admins;
   const filename=(track?.name||'').replace(/\.(mp3|wav|ogg|m4a|flac|aac|opus|webm)$/i,'');
   const parts=filename.match(/^(.+?)\s+[-–—]\s+(.+)$/);
-  ui.songName.textContent=parts?.[2]||filename||'Очередь пуста';ui.songArtist.textContent=parts?.[1]||'';ui.songPlay.textContent=m.playing?'Ⅱ':'▶';ui.songPlay.title=m.playing?'Пауза':'Воспроизвести';ui.songPlay.setAttribute('aria-label',ui.songPlay.title);ui.songName.title=track?.name||'';
+  ui.songName.textContent=parts?.[2]||filename||'Очередь пуста';ui.songArtist.textContent=parts?.[1]||'';ui.songPlay.textContent=m.playing?'':'▶';ui.songPlay.classList.toggle('playing',m.playing);ui.songPlay.title=m.playing?'Пауза':'Воспроизвести';ui.songPlay.setAttribute('aria-label',ui.songPlay.title);ui.songName.title=track?.name||'';
   ui.songSeek.max=track?.duration||0;
   ui.songSeek.disabled=ui.songPlay.disabled=ui.songNext.disabled=ui.songPrevious.disabled=!track||!allowed;
   ui.addSong.disabled=!allowed||uploadingSong;
