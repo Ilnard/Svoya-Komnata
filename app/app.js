@@ -88,6 +88,11 @@ function watchMic(stream) {
 }
 const status = (message, state = 'ready') => { ui.status.textContent = message; ui.status.parentElement.dataset.state = state; };
 const icons = {
+  paperclip:'<path d="m8 14 7-7a2.5 2.5 0 0 1 3.5 3.5L10 19a4.5 4.5 0 0 1-6.4-6.4l9-9"/>',
+  play:'<path fill="currentColor" stroke="none" d="M7 4.5v15L19 12z"/>',
+  pause:'<path stroke-width="3.5" d="M8 5v14M16 5v14"/>',
+  speaker:'<path d="M3 9h4l5-4v14l-5-4H3zM16 8q4 4 0 8m3-11q7 7 0 14"/>',
+  silent:'<path d="M3 9h4l5-4v14l-5-4H3zM16 9l5 6m0-6-5 6"/>',
   mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/>',
   'mic-off': '<path d="m3 3 18 18M9 9v3a3 3 0 0 0 5 2M9 5V4a3 3 0 0 1 6 0v7M5 10v2a7 7 0 0 0 12 5M19 10v2M12 19v3m-4 0h8"/>',
   chat: '<path d="M21 11a9 9 0 0 1-9 9H4l-2 2V11a9 9 0 0 1 19 0Z"/><path d="M7 8h10M7 12h7"/>',

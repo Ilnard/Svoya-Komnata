@@ -43,6 +43,7 @@ function drawSongWave(levels){
 function refreshPosition(){
   const track=musicState?.queue.find(t=>t.id===musicState.id);
   const progress=track?.duration ? Math.max(0,Math.min(1,(scrubbing?ui.songSeek.valueAsNumber:predictedPosition())/track.duration)) : 0;
+  ui.songSeek.style.setProperty('--filled',(progress*100)+'%');
   ui.wavePlayed.setAttribute('offset',progress);ui.waveRemaining.setAttribute('offset',progress);
   if(!track){ui.songTime.textContent='';ui.songSeek.value=0;return;}
   const pos=scrubbing?ui.songSeek.valueAsNumber:Math.min(track.duration,predictedPosition());
@@ -126,9 +127,11 @@ ui.songSeek.onchange=action(async()=>{try{await musicCommand('seek',{position:ui
 ui.songSeek.onpointercancel=()=>{scrubbing=false;};
 ui.songVolume.oninput=()=>{
   const v=ui.songVolume.valueAsNumber/100;ui.songPercent.textContent=ui.songVolume.value+'%';
+  ui.songVolume.style.setProperty('--filled',(v*100)+'%');
   if(hostMusic)hostMusic.gain.gain.value=v;
   for(const p of peers.values())if(p.songAudio)p.songAudio.volume=v;
 };
+ui.songVolume.style.setProperty('--filled',ui.songVolume.value+'%');
 ui.songVolume.onchange=()=>savePreference({songVolume:ui.songVolume.valueAsNumber});
 function durationOf(file){
   return new Promise((resolve,reject)=>{
@@ -213,9 +216,28 @@ function pumpPreviews(){
         play.textContent='▶';full.textContent='⛶';play.setAttribute('aria-label','Воспроизвести или приостановить видео');full.setAttribute('aria-label','Во весь экран');
         for(const slider of [seek,vol]){slider.type='range';slider.min=0;slider.step='0.01';}
         seek.value=0;seek.disabled=true;vol.max=1;vol.value=1;seek.setAttribute('aria-label','Перемотка видео');vol.setAttribute('aria-label','Громкость видео');
+        const elapsed=document.createElement('span'),mute=document.createElement('button');
+        elapsed.className='clip-time';seek.className='clip-seek';vol.className='clip-volume';
+        function iconButton(button,icon,label){
+          setIcon(button,icon);button.title=label;button.setAttribute('aria-label',label);
+        }
+        function updateTime(){
+          const position=Number.isFinite(video.currentTime)?Math.min(video.currentTime,Number(seek.max)||0):0;
+          elapsed.textContent=minutes(position)+' / '+(seek.disabled?'–:––':minutes(Number(seek.max)));
+          seek.style.setProperty('--filled',((Number(seek.max)>0?position/Number(seek.max):0)*100)+'%');
+        }
+        function updateVolume(){
+          const level=video.muted?0:video.volume;
+          vol.value=level;vol.style.setProperty('--filled',(level*100)+'%');
+          iconButton(mute,level?'speaker':'silent',level?'Выключить звук видео':'Включить звук видео');
+        }
+        mute.onclick=()=>{if(!video.volume)video.volume=1;else video.muted=!video.muted;updateVolume();};
+        video.onvolumechange=updateVolume;
+        iconButton(full,'expand','На весь экран');iconButton(play,'play','Воспроизвести');
+        updateVolume();updateTime();
         function setSeekLimit(){
           const end=Number.isFinite(video.duration)?video.duration:(video.seekable.length?video.seekable.end(video.seekable.length-1):0);
-          if(Number.isFinite(end)&&end>0){seek.max=end;seek.disabled=false;}
+          if(Number.isFinite(end)&&end>0){seek.max=end;seek.disabled=false;}updateTime();
         }
         video.ondurationchange=video.onprogress=setSeekLimit;
         video.onloadedmetadata=()=>{
@@ -226,12 +248,12 @@ function pumpPreviews(){
             video.currentTime=1e8;
           }
         };
-        video.ontimeupdate=()=>{if(!seek.matches(':active'))seek.value=video.currentTime;};
-        video.onplay=()=>play.textContent='Ⅱ';video.onpause=()=>play.textContent='▶';
+        video.ontimeupdate=()=>{if(!seek.matches(':active'))seek.value=video.currentTime;updateTime();};
+        video.onplay=()=>iconButton(play,'pause','Приостановить');video.onpause=()=>iconButton(play,'play','Воспроизвести');
         play.onclick=action(()=>video.paused?video.play():video.pause());video.onclick=()=>play.click();
         full.onclick=action(()=>document.fullscreenElement?document.exitFullscreen():body.requestFullscreen());
-        seek.oninput=()=>video.currentTime=seek.valueAsNumber;vol.oninput=()=>video.volume=vol.valueAsNumber;
-        controls.append(play,seek,vol,full);body.replaceChildren(video,controls);
+        seek.oninput=()=>video.currentTime=seek.valueAsNumber;vol.oninput=()=>{video.muted=false;video.volume=vol.valueAsNumber;updateVolume();};
+        controls.append(seek,play,elapsed,mute,vol,full);body.replaceChildren(video,controls);
         video.onerror=()=>{if(active())body.textContent='Формат видео не поддерживается.';};
       }
     }).catch(()=>{if(active()){e.failed=true;body.textContent='Предпросмотр недоступен';body.append(fileButton(e.file,e.current));}}).finally(()=>{transfers--;if(active())e.loading=false;pumpPreviews();});
