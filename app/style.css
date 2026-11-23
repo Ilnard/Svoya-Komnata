@@ -588,7 +588,7 @@ html[data-theme="throne"] .app-header{background:linear-gradient(#101115ca,trans
 
 /* Local silver light against the dark stone. */
 html[data-theme="throne"] .throne-art {background:#050506;--moonlight:.025;--flame:0;}
-.throne-scene {transform:translate(-50%,-50%) scale(1.025);background-image:linear-gradient(#0303048a,#010102a3),url('/throne.jpg');}
+.throne-scene {transform:translate(-50%,-50%) scale(1.045);background-image:linear-gradient(#0303048a,#010102a3),url('/throne.jpg');}
 .throne-scene::after {background:radial-gradient(ellipse 8% 15% at 50% 20%,#dedee2,transparent);}
 .brazier {position:absolute;left:31.1%;top:53.4%;width:4.1%;height:14%;transform:translate(-50%,-100%);opacity:var(--flame);}
 .brazier:nth-child(2){left:68.9%;}

@@ -2,9 +2,24 @@ const prismArt=document.querySelector('.prism-art');
 const quietMotion=matchMedia('(prefers-reduced-motion: reduce)');
 let prismInput=null,prismMeter=null,prismContext=null,prismSource=null,prismOwnContext=false;
 let prismPulse=0,prismAverage=0,prismLast=0;
-const prismBins=new Float32Array(1024);
+const prismBins=new Float32Array(512);
+let bassFloor=0,bassPeak=0,rising=false;
+function bassAttack(level){
+  // Re-arm on a local dip, even when the bass never returns to silence.
+  if(rising){
+    bassPeak=Math.max(bassPeak,level);
+    if(bassPeak-level<Math.max(.0007,bassPeak*.09))return 0;
+    rising=false;bassFloor=level;
+  }
+  bassFloor=Math.min(bassFloor,level);
+  const rise=level-bassFloor;
+  if(rise<Math.max(.001,bassFloor*.15))return 0;
+  rising=true;bassPeak=level;
+  return Math.min(1,.55+rise/Math.max(.008,level));
+}
 function detachPrism(){
   if(prismSource&&prismMeter)try{prismSource.disconnect(prismMeter);}catch{}
+  bassFloor=bassPeak=0;rising=false;
   prismMeter?.disconnect();
   if(prismOwnContext)prismContext?.close().catch(()=>{});
   prismInput=prismMeter=prismContext=prismSource=null;prismOwnContext=false;prismAverage=0;prismPulse=0;
@@ -13,16 +28,16 @@ const throneArt=document.querySelector('.throne-art');
 const spirits=[...throneArt.querySelectorAll('i')];
 const throneScene=throneArt.querySelector('.throne-scene');
 let shake;
-let orbitTime=0,torchHeat=0,beatArmed=true;
+let orbitTime=0,torchHeat=0;
 function animateThrone(dt,pulse,onset=0){
-  if(onset<.10)beatArmed=true;
-  torchHeat*=Math.exp(-dt/.23);
-  if(beatArmed && onset>.32){
+
+  torchHeat*=Math.exp(-dt/.13);
+  if(onset>0){
     torchHeat=Math.min(1,.45+onset);
-    beatArmed=false;
+
     shake?.cancel();
-    const distance=5*torchHeat;
-    shake=throneScene.animate([[0,0],[1,-.65],[-.72,.5],[.4,-.35],[-.15,.12],[0,0]]
+    const distance=11*torchHeat;
+    shake=throneScene.animate([[.55,-.3],[1,-.65],[-.72,.5],[.4,-.35],[-.15,.12],[0,0]]
       .map(([x,y])=>({translate:(x*distance)+'px '+(y*distance)+'px'})),
       {duration:220,easing:'ease-out'});
   }
@@ -46,7 +61,7 @@ function samplePrism(){
       prismInput=input;prismOwnContext=!hostMusic;
       prismContext=hostMusic?.ctx||new AudioContext();
       prismSource=hostMusic?.source||prismContext.createMediaStreamSource(input);
-      prismMeter=prismContext.createAnalyser();prismMeter.fftSize=2048;prismMeter.smoothingTimeConstant=0.35;
+      prismMeter=prismContext.createAnalyser();prismMeter.fftSize=1024;prismMeter.smoothingTimeConstant=0;
       prismSource.connect(prismMeter);
       prismContext.resume().catch(()=>{});
     }
@@ -60,16 +75,23 @@ function samplePrism(){
     bass=count?bass/count:0;
   }
   const now=performance.now(),dt=Math.min(0.2,(now-prismLast)/1000||0.04);prismLast=now;
+  const attack=input ? bassAttack(bass) : 0;
   const impact=Math.max(0,bass-prismAverage*1.15);
   prismAverage+=(bass-prismAverage)*(1-Math.exp(-dt/0.4));
-  const target=Math.min(1,bass*2.5+impact*14);
-  prismPulse=target>prismPulse?target:prismPulse*Math.exp(-dt/0.22);
+  const target=Math.min(.72,bass*2.5+impact*8);
+  prismPulse=target>prismPulse?target:prismPulse*Math.exp(-dt/0.09);
+  if(attack)prismPulse=1;
   if(!active)prismPulse=0;
-  if(theme==='throne'){if(active)animateThrone(dt,prismPulse,Math.min(1,impact/Math.max(.008,prismAverage)));else {shake?.cancel();torchHeat=0;beatArmed=true;throneArt.style.removeProperty('--flame');}return;}
+  if(theme==='throne'){if(active)animateThrone(dt,prismPulse,attack);else {shake?.cancel();torchHeat=0;throneArt.style.removeProperty('--flame');}return;}
   prismArt.style.setProperty('--bass-scale',(1+prismPulse*.23).toFixed(3));
   prismArt.style.setProperty('--bass-light',(.58+prismPulse*.38).toFixed(3));
 }
-setInterval(samplePrism,40);
+function schedulePrism(){
+  samplePrism();
+  const responsive=prismInput&&!document.hidden;
+  setTimeout(schedulePrism,responsive?10:40);
+}
+schedulePrism();
 window.addEventListener('pagehide',detachPrism);
 /* Morph each ribbon independently. Matching cubic segments let Chromium
    interpolate contours without rebuilding the blurred layers in JavaScript. */
