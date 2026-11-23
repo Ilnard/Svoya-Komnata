@@ -14,6 +14,32 @@ function endMusic(){
 function predictedPosition(){
   return (musicState?.position||0)+(musicState?.playing?(performance.now()-musicSample)/1000:0);
 }
+async function analyzeSong(blob){
+  const decoder=new OfflineAudioContext(1,1,12000);
+  const audio=await decoder.decodeAudioData(await blob.arrayBuffer());
+  const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i));
+  const levels=Array.from({length:72},(_,bar)=>{
+    const start=Math.floor(bar*audio.length/72),end=Math.floor((bar+1)*audio.length/72);
+    let energy=0,count=0;
+    const stride=Math.max(1,Math.floor((end-start)/8192));
+    for(const channel of channels){
+      for(let i=start;i<end;i+=stride){energy+=channel[i]*channel[i];count++;}
+    }
+    return Math.sqrt(energy/Math.max(1,count));
+  });
+  const peak=Math.max(.001,...levels);
+  return levels.map(level=>Math.round(255*level/peak));
+}
+function drawSongWave(levels){
+  ui.songBars.replaceChildren();
+  if(!Array.isArray(levels)||levels.length!==72)return;
+  levels.forEach((level,i)=>{
+    const bar=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    const height=1+level/255*22;
+    for(const [key,value] of Object.entries({x:i*4,y:24-height,width:2.5,height,rx:1.2}))bar.setAttribute(key,value);
+    ui.songBars.append(bar);
+  });
+}
 function refreshPosition(){
   const track=musicState?.queue.find(t=>t.id===musicState.id);
   const progress=track?.duration ? Math.max(0,Math.min(1,(scrubbing?ui.songSeek.valueAsNumber:predictedPosition())/track.duration)) : 0;
@@ -44,6 +70,11 @@ async function applyHostMusic(track,current){
     const blob=await readAttachment(track,current,'application/octet-stream',active,()=>{});
     if(!blob||!active())return;
     h.audio.onerror=()=>{if(active()){ui.songStatus.textContent='Хост не смог воспроизвести '+track.name;if(musicState?.playing)musicCommand('pause').catch(()=>{});}};
+    if(!track.waveform){
+      analyzeSong(blob).then(waveform=>{
+        if(session===current)return api('music',{action:'waveform',track:track.id,waveform},current);
+      }).catch(()=>{});
+    }
     h.url=URL.createObjectURL(blob);h.audio.src=h.url;h.audio.load();h.loaded=true;
   }
   if(!track||!h.loaded)return;
@@ -73,6 +104,7 @@ function renderMusic(state,current){
   ui.addSong.disabled=!allowed||uploadingSong;
   const signature=JSON.stringify([m.queue,m.id,allowed]);
   if(signature!==queueSignature){
+    drawSongWave(track?.waveform);
     queueSignature=signature;ui.songQueue.replaceChildren();
     for(const t of m.queue){
       const row=document.createElement('li'),select=document.createElement('button'),remove=document.createElement('button');

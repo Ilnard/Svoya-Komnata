@@ -9,6 +9,16 @@ function snapshot(room){
 }
 function command(room,member,data,fail){
   const m=room.music;
+  if(data.action==='waveform'){
+    if(data.id!==room.host)fail('Только хост анализирует трек',403);
+    const song=m.queue.find(t=>t.id===data.track);
+    if(!song||song.waveform)return {};
+    if(!Array.isArray(data.waveform)||data.waveform.length!==72||
+       !data.waveform.every(v=>Number.isInteger(v)&&v>=0&&v<=255))fail('Некорректная форма волны');
+    room.archive.updateSong({...song,waveform:data.waveform});
+    song.waveform=data.waveform;
+    return {};
+  }
   if(data.action==='policy'){
     if(room.host!==data.id||typeof data.enabled!=='boolean')fail('Только хост может менять права',403);
     room.archive.saveMusicPolicy(data.enabled);m.admins=data.enabled;return {};

@@ -60,6 +60,7 @@ hasAdmin:address=>Boolean(address&&db.prepare('SELECT 1 FROM admins WHERE addres
       },
       songs:()=>db.prepare('SELECT json FROM songs ORDER BY rowid').all().map(row=>JSON.parse(row.json)),
       saveMusicPolicy(value){const next={...settings,musicAdmins:value};db.prepare('UPDATE settings SET json=? WHERE id=1').run(JSON.stringify(next));Object.assign(settings,next);},
+      updateSong(track){db.prepare('UPDATE songs SET json=? WHERE id=?').run(JSON.stringify(track),track.id);},
       addSong(track,bytes){
         db.exec('BEGIN');
         try{db.prepare('INSERT INTO files VALUES(?,?)').run(track.id,bytes);db.prepare('INSERT INTO songs VALUES(?,?)').run(track.id,JSON.stringify(track));db.exec('COMMIT');}
