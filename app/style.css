@@ -616,3 +616,15 @@ html:root[data-theme="throne"] .stream {background:#05050735;}
   filter:brightness(2.8) drop-shadow(0 0 12px white) drop-shadow(0 0 26px white) drop-shadow(0 0 38px #fffe);
 }
 @media(prefers-reduced-motion:reduce){.lord-face,.throne-art i::before{display:none;}}
+
+/* Keep the call dock outside the viewer's scrollable settings. */
+@media (orientation:landscape) and (min-width:801px) {
+  .room-layout:has(#viewSettings:not([hidden])) {grid-template-rows:minmax(0,1fr);}
+  .stage-panel:has(#viewSettings:not([hidden])) {min-height:0;overflow-y:auto;}
+  .stage-panel:has(#viewSettings:not([hidden])) > :not(.stream) {flex-shrink:0;}
+  .stage-panel:has(#viewSettings:not([hidden])) .stream {min-height:clamp(160px,24vh,240px);}
+  .room:has(#viewSettings:not([hidden])) .call-bar {flex-shrink:0;}
+}
+@media (orientation:portrait), (max-width:800px) {
+  html:root .room:has(#viewSettings:not([hidden])) .call-bar {position:static;}
+}
