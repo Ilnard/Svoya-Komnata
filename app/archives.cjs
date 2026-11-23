@@ -35,7 +35,15 @@ function open(id,title,mode){
       cached={changes,size:bytes.length,digest:require('crypto').createHash('sha256').update(bytes).digest('hex'),id};
       return cached;
     };
+    db.exec('CREATE TABLE IF NOT EXISTS avatars(hash TEXT PRIMARY KEY,photo TEXT NOT NULL)');
     return {id,settings,page,snapshot,
+      storeAvatar(photo){
+        if(!photo)return '';
+        const hash=require('node:crypto').createHash('sha256').update(photo).digest('hex');
+        db.prepare('INSERT OR IGNORE INTO avatars VALUES(?,?)').run(hash,photo);
+        return hash;
+      },
+      getAvatar(hash){return db.prepare('SELECT photo FROM avatars WHERE hash=?').get(hash)?.photo||'';},
       snapshotChunk(digest,offset){
         if(snapshot().digest!==digest)throw Object.assign(Error('Архив изменился'),{status:409});
         if(!Number.isSafeInteger(offset)||offset<0||offset>=cached.size)throw Error('Некорректная позиция');

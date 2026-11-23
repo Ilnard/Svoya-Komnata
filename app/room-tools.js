@@ -7,7 +7,7 @@ function paintAvatar(element,photo){
   element.append(img);
   if(element.classList.contains('avatar')){
     element.tabIndex=0;element.setAttribute('role','button');element.setAttribute('aria-label','Увеличить аватар');
-    element.onclick=()=>{ui.avatarPicture.src=photo;ui.avatarTitle.textContent=element.closest('.member')?.querySelector('.member-name')?.textContent||ui.selfName.textContent;ui.largeAvatar.showModal();};
+    element.onclick=()=>{ui.avatarPicture.src=photo;ui.avatarTitle.textContent=element.dataset.author||element.closest('.member')?.querySelector('.member-name')?.textContent||ui.selfName.textContent;ui.largeAvatar.showModal();};
     element.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();element.click();}};
   }
 }

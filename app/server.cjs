@@ -1,3 +1,10 @@
+function withChatAvatars(room,messages){
+  return messages.map(message=>{
+    if(message.avatarKey!==undefined)return message;
+    const authors=[...room.members.values()].filter(member=>member.name===message.name);
+    return authors.length===1 ? {...message,avatarKey:authors[0].avatarKey} : message;
+  });
+}
 const http = require('node:http');
 const os = require('node:os');
 const fs = require('node:fs');
@@ -96,6 +103,7 @@ function command(data, local = false, address) {
     const token = randomBytes(24).toString('hex');
     room.members.set(id, { name, token, avatar:typeof data.avatar==='string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data.avatar) && data.avatar.length<24000 ? data.avatar : '', admin: data.op === 'create', muted: false, seen: Date.now(), signals: [], microphone: null });
     const entrant=room.members.get(id);
+    entrant.avatarKey=room.archive.storeAvatar(entrant.avatar);
     entrant.address=address;entrant.admin ||= room.archive.hasAdmin(address);
     entrant.greetingEvents=[];
     if(typeof data.greeting==='string' && data.greeting.length<=64000 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.greeting) && data.greeting){
@@ -121,8 +129,9 @@ function command(data, local = false, address) {
     case 'music': return require('./music.cjs').command(room,member,data,fail);
     case 'archive-info': return room.archive.snapshot();
     case 'archive-chunk': return {chunk:room.archive.snapshotChunk(data.digest,data.offset)};
-    case 'history': return {messages:room.archive.page(Number.isSafeInteger(data.before)?data.before:undefined)};
+    case 'history': return {messages:withChatAvatars(room,room.archive.page(Number.isSafeInteger(data.before)?data.before:undefined))};
     case 'greeting': return {sound:room.members.get(data.subject)?.greeting||''};
+    case 'chat-avatar': return {avatar:typeof data.hash==='string' ? room.archive.getAvatar(data.hash) : ''};
     case 'profile': return {avatar:room.members.get(data.subject)?.avatar || ''};
     case 'poll':
       member.watching = room.screen && data.id !== room.screen && data.watching === room.screenId ? room.screenId : null;
@@ -133,7 +142,7 @@ function command(data, local = false, address) {
       if (typeof data.microphone === 'boolean') member.microphone = data.microphone;
       return {
         members: Array.from(room.members, ([id, m]) => ({ id, hasAvatar:Boolean(m.avatar),  watching:m.watching, epoch:m.epoch || 0, retry:m.retries?.[data.id] || 0, name: m.name, admin:m.admin, muted:m.muted, microphone: m.muted ? false : m.microphone })),
-        music:require('./music.cjs').snapshot(room),greetings:member.greetingEvents.splice(0),title:room.archive.settings.title,chat: room.chat,
+        music:require('./music.cjs').snapshot(room),greetings:member.greetingEvents.splice(0),title:room.archive.settings.title,chat: withChatAvatars(room,room.chat),
         screen: room.screen,
         screenId: room.screen ? room.screenId : null,
         screenHasAudio: Boolean(room.screen && room.screenHasAudio),
@@ -158,7 +167,7 @@ function command(data, local = false, address) {
     }
     case 'chat': {
       const message = String(data.message ?? '').trim().slice(0, 1000);
-      if (message) { const item={id:randomUUID(), name:member.name,message,time:Date.now()};room.archive.append(item);room.chat.push(item); }
+      if (message) { const item={id:randomUUID(), name:member.name,avatarKey:member.avatarKey,message,time:Date.now()};room.archive.append(item);room.chat.push(item); }
       if (room.chat.length > 100) room.chat.shift();
       break;
     }

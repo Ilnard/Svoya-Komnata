@@ -134,7 +134,7 @@ async function loadHistory(){
     for(const m of messages){
       const li=document.createElement('li'),label=document.createElement('strong');
       label.textContent=m.name+' · '+new Date(m.time).toLocaleString('ru-RU');
-      li.append(label,m.file?fileButton(m.file,current):document.createTextNode(m.message));
+      li.append(messageAvatar(m,current),label,m.file?fileButton(m.file,current):document.createTextNode(m.message));
       fragment.append(li);
     }
     ui.historyRows.prepend(fragment);

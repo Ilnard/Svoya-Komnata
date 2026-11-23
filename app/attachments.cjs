@@ -46,7 +46,7 @@ function attachment(room, member, req, fail) {
     room.archive.addSong(track,Buffer.concat(f.parts));room.music.queue.push(track);
     room.music.id??=track.id;files.delete(req.fileId);return {};
   }
-  const item={id:randomUUID(),name:member.name,time:Date.now(),file:{id:req.fileId,name:f.name,size:f.size}};
+  const item={id:randomUUID(),name:member.name,avatarKey:member.avatarKey,time:Date.now(),file:{id:req.fileId,name:f.name,size:f.size}};
   room.archive.append(item,Buffer.concat(f.parts));room.chat.push(item);files.delete(req.fileId);
   if(room.chat.length>100)room.chat.shift();
   f.published=true;

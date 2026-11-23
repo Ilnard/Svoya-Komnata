@@ -126,10 +126,25 @@ function notify(message, error = false) {
 function avatar(name, photo) {
   const element = document.createElement('span');
   element.className = 'avatar';
+  element.dataset.author = name;
   element.textContent = Array.from(name.trim())[0]?.toUpperCase() || '?';
   element.style.setProperty('--hue', Array.from(name).reduce((hash, char) => hash + char.codePointAt(0), 0) % 360);
   if(photo) paintAvatar(element,photo);
   return element;
+}
+function messageAvatar(message,current){
+  const face=avatar(message.name);
+  if(message.avatarKey){
+    current.chatPhotos ??= new Map();
+    const cache=current.chatPhotos;
+    if(!cache.has(message.avatarKey)){
+      cache.set(message.avatarKey,api('chat-avatar',{hash:message.avatarKey},current)
+        .then(result=>result.avatar).catch(()=>{cache.delete(message.avatarKey);return '';}));
+    }
+    cache.get(message.avatarKey).then(photo=>paintAvatar(face,photo));
+  }
+  face.dataset.photoKey=message.avatarKey||'';
+  return face;
 }
 function updateControls() {
   const micOn = Boolean(microphone?.getAudioTracks().some(track => track.readyState === 'live'));
@@ -414,7 +429,12 @@ function render(state, current) {
     for (const message of state.chat) {
       const key = message.id || JSON.stringify(message);
       activeKeys.add(key);
-      if (messageRows.has(key)) continue;
+      const existingRow=messageRows.get(key);
+      if(existingRow){
+        const face=existingRow.firstElementChild;
+        if(face.dataset.photoKey!==(message.avatarKey||''))face.replaceWith(messageAvatar(message,current));
+        continue;
+      }
       const row = document.createElement('li');
       row.className = 'chat-message';
       row.dataset.key = key;
@@ -434,7 +454,7 @@ function render(state, current) {
       const remove=document.createElement('button');remove.className='delete-message';remove.title='Удалить сообщение';remove.setAttribute('aria-label','Удалить сообщение');remove.textContent='×';
       remove.onclick=action(()=>api('delete-message',{messageId:message.id},current));meta.append(remove);
       body.append(meta, message.file ? inlineFile(message.file,current) : text);
-      row.append(avatar(message.name), body);
+      row.append(messageAvatar(message,current), body);
       ui.messages.append(row);
     }
     for (const [key, row] of messageRows) if (!activeKeys.has(key)) row.remove();
