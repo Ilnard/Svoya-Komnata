@@ -16,6 +16,8 @@ function predictedPosition(){
 }
 function refreshPosition(){
   const track=musicState?.queue.find(t=>t.id===musicState.id);
+  const progress=track?.duration ? Math.max(0,Math.min(1,(scrubbing?ui.songSeek.valueAsNumber:predictedPosition())/track.duration)) : 0;
+  ui.wavePlayed.setAttribute('offset',progress);ui.waveRemaining.setAttribute('offset',progress);
   if(!track){ui.songTime.textContent='';ui.songSeek.value=0;return;}
   const pos=scrubbing?ui.songSeek.valueAsNumber:Math.min(track.duration,predictedPosition());
   if(!scrubbing)ui.songSeek.value=pos;
@@ -63,7 +65,9 @@ function renderMusic(state,current){
   musicState=m;musicSample=performance.now();
   const track=m.queue.find(t=>t.id===m.id),allowed=!m.admins||state.members.find(v=>v.id===current.id)?.admin;
   ui.policyRow.hidden=current.host!==current.id;ui.songPolicy.checked=m.admins;
-  ui.songName.textContent=track?.name||'Очередь пуста';ui.songPlay.textContent=m.playing?'Ⅱ':'▶';ui.songPlay.title=m.playing?'Пауза':'Воспроизвести';ui.songPlay.setAttribute('aria-label',ui.songPlay.title);ui.songName.title=track?.name||'';
+  const filename=(track?.name||'').replace(/\.(mp3|wav|ogg|m4a|flac|aac|opus|webm)$/i,'');
+  const parts=filename.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+  ui.songName.textContent=parts?.[2]||filename||'Очередь пуста';ui.songArtist.textContent=parts?.[1]||'';ui.songPlay.textContent=m.playing?'Ⅱ':'▶';ui.songPlay.title=m.playing?'Пауза':'Воспроизвести';ui.songPlay.setAttribute('aria-label',ui.songPlay.title);ui.songName.title=track?.name||'';
   ui.songSeek.max=track?.duration||0;
   ui.songSeek.disabled=ui.songPlay.disabled=ui.songNext.disabled=ui.songPrevious.disabled=!track||!allowed;
   ui.addSong.disabled=!allowed||uploadingSong;

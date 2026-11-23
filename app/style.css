@@ -424,3 +424,42 @@ html[data-theme="prism"] .prism-orbit:nth-child(6) {
 html[data-theme="prism"] .prism-orbit:nth-child(6) i {
   background:linear-gradient(145deg,#30275e,#8743bc 42%,#d05195 76%,#49235e);
 }
+/* Single-row transport and compact call dock. */
+html:root .room-header {
+  grid-template-columns:minmax(0,1fr) minmax(96px,13%) auto;
+  align-items:center;gap:20px;min-height:82px;padding:14px 24px;
+}
+html:root .room-header .header-player {
+  grid-area:1/1;grid-template: auto / minmax(110px,1fr) auto minmax(100px,1.65fr) auto;
+  align-items:center;gap:16px;
+}
+.track-info {min-width:0;border-inline-end:1px solid var(--line);padding-inline-end:12px;}
+html:root .track-info #songName,.track-info small {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;}
+.track-info small {color:var(--muted);font-size:11px;margin-top:3px;}
+.track-info small:empty {display:none;}
+html:root .header-player .transport {grid-area:1/2;gap:5px;}
+.transport #songPlay {border-radius:50%;width:38px;height:38px;background:var(--mint);color:var(--bg,#171322);font-size:17px;}
+.track-position {grid-area:1/3;min-width:0;display:grid;align-content:center;}
+.track-wave {width:100%;height:18px;display:block;}
+.track-position #songSeek {width:100%;height:14px;min-height:14px;}
+html:root .header-player #songTime {grid-area:1/4;white-space:nowrap;font-variant-numeric:tabular-nums;}
+html:root .room-header .header-volume {grid-area:1/2;width:100%;grid-template:auto / auto minmax(0,1fr);align-items:center;gap:8px;border-inline-start:1px solid var(--line);padding-inline-start:12px;}
+.header-volume label svg {display:block;color:var(--mint);}
+.volume-caption {position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;}
+html:root .room-header #openMusic {grid-area:1/3;}
+html:root .call-bar {align-self:center;width:fit-content;max-width:100%;min-height:0;border-radius:22px;padding:9px 14px;gap:16px;}
+.call-bar .self {width:auto;max-width:175px;padding-right:10px;}
+html:root .call-bar :is(.control,.leave) {display:inline-flex;flex-direction:row;align-items:center;justify-content:center;min-height:40px;height:40px;width:auto;min-width:0;padding:0 14px;gap:8px;border-radius:13px;white-space:nowrap;border:1px solid color-mix(in srgb,currentColor 15%,transparent);box-shadow:inset 0 1px 0 #ffffff10;}
+html:root .call-bar .leave {margin-inline-start:4px;}
+html[data-theme="prism"] .call-bar .control {background:linear-gradient(135deg,#402e53,#281d37);color:#f2e7ff;}
+html[data-theme="prism"] .call-bar .control[aria-pressed="true"] {background:linear-gradient(135deg,#ba6056,#804055);color:white;}
+html[data-theme="prism"] .call-bar .leave {background:linear-gradient(135deg,#793049,#4d2436);color:#ffb9bd;}
+@media(max-width:850px){
+ html:root .room-header {gap:10px;padding:12px;}
+ html:root .room-header .header-player {grid-template:auto auto / minmax(0,1fr) auto;gap:3px 10px;}
+ .track-info {grid-area:1/1;border:0;}
+ .track-position {grid-area:2/1;}
+ html:root .header-player #songTime {grid-area:2/2;text-align:center;}
+ html:root .call-bar {gap:6px;}
+ html:root .call-bar :is(.control,.leave) {padding:0 9px;}
+}
