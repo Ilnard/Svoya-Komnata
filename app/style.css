@@ -471,3 +471,27 @@ html[data-theme="prism"] .call-bar .leave {background:linear-gradient(135deg,#79
 
 /* Optical centering for the right-pointing play glyph. */
 .transport #songPlay:not(.playing) {padding-left:4px;}
+
+/* Tall windows reserve the full width for a shared screen. */
+@media (orientation:portrait) {
+  html:root .room {height:auto;min-height:calc(100dvh - 96px);}
+  html:root .room-layout {
+    grid-template-columns:minmax(200px,0.8fr) minmax(0,2fr);
+    grid-template-areas:"stage stage" "people chat";
+    grid-template-rows:auto minmax(320px,1fr);
+  }
+  html:root .stage-panel {grid-area:stage;min-height:0;}
+  html:root .stage-panel .stream {flex:none;width:100%;aspect-ratio:16/9;min-height:240px;}
+  html:root .people-panel {grid-area:people;min-width:0;max-height:none;}
+  html:root .chat-panel {grid-area:chat;height:auto;min-height:320px;}
+  html:root .chat-panel .chat-body {min-height:0;max-height:46dvh;overflow-y:auto;}
+  html:root .room-layout .panel-grip {display:none;}
+  html:root .call-bar {position:sticky;bottom:8px;z-index:4;}
+}
+@media (orientation:portrait) and (max-width:680px) {
+  html:root .room-layout {
+    grid-template-columns:minmax(0,1fr);grid-template-areas:"stage" "people" "chat";
+    grid-template-rows:auto auto minmax(320px,1fr);
+  }
+  html:root .people-panel {max-height:260px;}
+}
