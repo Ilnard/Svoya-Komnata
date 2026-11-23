@@ -585,3 +585,22 @@ html:root[data-theme="throne"] :is(.room-header,.people-panel,.chat-panel,.stage
 html:root[data-theme="throne"] .stream{background:#10111538;border-color:#ffffff2e;}
 html[data-theme="throne"] .app-header{background:linear-gradient(#101115ca,transparent);}
 @media(prefers-reduced-motion:reduce){.throne-art {--moonlight:.08!important;}}
+
+/* Silver moonlight stays local; only the braziers warm the stone. */
+html[data-theme="throne"] .throne-art {background:#050506;--moonlight:.025;--flame:0;}
+.throne-scene {background-image:linear-gradient(#05050952,#03030661),url('/throne.jpg');}
+.throne-scene::after {background:radial-gradient(ellipse 8% 15% at 50% 20%,#dedee2,transparent);}
+.brazier {position:absolute;left:31.1%;top:53.4%;width:1.65%;height:5.6%;transform:translate(-50%,-100%);opacity:var(--flame);}
+.brazier:nth-child(2){left:68.9%;}
+.brazier::before,.brazier::after {content:"";position:absolute;pointer-events:none;}
+.brazier::before {inset:-140% -360% -180%;background:radial-gradient(ellipse,#ffd4a947,#cf793b26 33%,transparent 68%);}
+.brazier::after {inset:0;background:radial-gradient(ellipse at 48% 89%,#fff2d4 3%,#ffc58b 24%,#e98546aa 47%,transparent 75%);border-radius:78% 22% 55% 45%;transform-origin:50% 100%;animation:throne-fire .47s ease-in-out infinite alternate;}
+.brazier:nth-child(2)::after {animation-delay:-.23s;}
+@keyframes throne-fire {from{transform:scale(.8,.8) skewX(-8deg);}to{transform:scale(1.05,1.12) skewX(9deg);}}
+.throne-art i:nth-of-type(1),.throne-art i:nth-of-type(3){width:clamp(80px,11vw,185px);}
+.throne-art i:nth-of-type(2){width:clamp(62px,8vw,132px);}
+.throne-art i:nth-of-type(4){width:clamp(54px,6.5vw,108px);}
+.throne-art i {filter:grayscale(1) brightness(.75) drop-shadow(0 0 5px #fff6);}
+html:root[data-theme="throne"] .stage-panel {background:#07070969;}
+html:root[data-theme="throne"] .stream {background:#05050735;}
+@media(prefers-reduced-motion:reduce){.brazier{display:none;}.brazier::after{animation:none;}}

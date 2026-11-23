@@ -11,14 +11,18 @@ function detachPrism(){
 }
 const throneArt=document.querySelector('.throne-art');
 const spirits=[...throneArt.querySelectorAll('i')];
-let orbitTime=0;
-function animateThrone(dt,pulse){
-  orbitTime+=dt*(1+2.2*pulse);
-  throneArt.style.setProperty('--moonlight',(.08+.65*pulse).toFixed(3));
+let orbitTime=0,torchHeat=0,beatArmed=true;
+function animateThrone(dt,pulse,onset=0){
+  if(onset<.10)beatArmed=true;
+  torchHeat*=Math.exp(-dt/.23);
+  if(beatArmed && onset>.32){torchHeat=Math.min(1,.45+onset);beatArmed=false;}
+  throneArt.style.setProperty('--flame',torchHeat.toFixed(3));
+  orbitTime+=dt*(1+5*pulse+7*torchHeat);
+  throneArt.style.setProperty('--moonlight',(.025+.21*pulse).toFixed(3));
   spirits.forEach((spirit,index)=>{
     const phase=orbitTime*(.29+index*.04)+index*1.9;
-    const x=Math.cos(phase)*34,y=Math.sin(phase)*19;
-    spirit.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) rotate('+ (8*Math.sin(phase*.8)).toFixed(2)+'deg)';
+    const x=Math.cos(phase)*58+12*Math.sin(phase*1.7),y=Math.sin(phase)*36;
+    spirit.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) rotate('+ (14*Math.sin(phase*.8)).toFixed(2)+'deg)';
   });
 }
 function samplePrism(){
@@ -51,7 +55,7 @@ function samplePrism(){
   const target=Math.min(1,bass*2.5+impact*14);
   prismPulse=target>prismPulse?target:prismPulse*Math.exp(-dt/0.22);
   if(!active)prismPulse=0;
-  if(theme==='throne'){if(active)animateThrone(dt,prismPulse);return;}
+  if(theme==='throne'){if(active)animateThrone(dt,prismPulse,Math.min(1,impact/Math.max(.008,prismAverage)));else {torchHeat=0;beatArmed=true;throneArt.style.removeProperty('--flame');}return;}
   prismArt.style.setProperty('--bass-scale',(1+prismPulse*.23).toFixed(3));
   prismArt.style.setProperty('--bass-light',(.58+prismPulse*.38).toFixed(3));
 }
