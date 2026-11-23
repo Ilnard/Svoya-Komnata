@@ -178,6 +178,8 @@ const files = {
   '/noise/processor.js': ['noise/processor.js', 'text/javascript'],
   '/noise/rnnoise.wasm': ['noise/rnnoise.wasm', 'application/wasm'],
   '/': ['index.html', 'text/html'],
+  '/throne.jpg':['throne.jpg','image/jpeg'],
+  '/skull.png':['skull.png','image/png'],
   '/prism.js':['prism.js','text/javascript'],
   '/player.js':['player.js','text/javascript'],
   '/extras.js':['extras.js','text/javascript'],

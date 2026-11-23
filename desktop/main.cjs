@@ -101,7 +101,7 @@ async function start() {
     if([144,240,360,480,720,1080].includes(patch.viewHeight))valid.viewHeight=patch.viewHeight;
     if([1,2,4,6,8].includes(patch.viewRate))valid.viewRate=patch.viewRate;
     if(Number.isInteger(patch.streamVolume)&&patch.streamVolume>=0&&patch.streamVolume<=100)valid.streamVolume=patch.streamVolume;
-    if(['mint','ocean','dusk','amber','white','graphite','prism'].includes(patch.theme))valid.theme=patch.theme;
+    if(['mint','ocean','dusk','amber','white','graphite','prism','throne'].includes(patch.theme))valid.theme=patch.theme;
     if(Number.isInteger(patch.greetingVolume)&&patch.greetingVolume>=0&&patch.greetingVolume<=100)valid.greetingVolume=patch.greetingVolume;
     if(typeof patch.greeting==='string'&&patch.greeting.length<=64000&&/^[A-Za-z0-9+/]*={0,2}$/.test(patch.greeting))valid.greeting=patch.greeting;
     for(const [key,min,max] of [['songVolume',0,100],['peopleWidth',140,900],['chatWidth',180,1200]])if(Number.isInteger(patch[key])&&patch[key]>=min&&patch[key]<=max)valid[key]=patch[key];

@@ -9,8 +9,21 @@ function detachPrism(){
   if(prismOwnContext)prismContext?.close().catch(()=>{});
   prismInput=prismMeter=prismContext=prismSource=null;prismOwnContext=false;prismAverage=0;prismPulse=0;
 }
+const throneArt=document.querySelector('.throne-art');
+const spirits=[...throneArt.querySelectorAll('i')];
+let orbitTime=0;
+function animateThrone(dt,pulse){
+  orbitTime+=dt*(1+2.2*pulse);
+  throneArt.style.setProperty('--moonlight',(.08+.65*pulse).toFixed(3));
+  spirits.forEach((spirit,index)=>{
+    const phase=orbitTime*(.29+index*.04)+index*1.9;
+    const x=Math.cos(phase)*34,y=Math.sin(phase)*19;
+    spirit.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) rotate('+ (8*Math.sin(phase*.8)).toFixed(2)+'deg)';
+  });
+}
 function samplePrism(){
-  const active=document.documentElement.dataset.theme==='prism'&&!document.hidden&&!quietMotion.matches;
+  const theme=document.documentElement.dataset.theme;
+  const active=(theme==='prism'||theme==='throne')&&!document.hidden&&!quietMotion.matches;
   const musicPeer=session&&peers.get(session.host);
   const input=active&&musicState?.playing?(hostMusic?.source||musicPeer?.songAudio?.srcObject):null;
   if(input!==prismInput){
@@ -38,6 +51,7 @@ function samplePrism(){
   const target=Math.min(1,bass*2.5+impact*14);
   prismPulse=target>prismPulse?target:prismPulse*Math.exp(-dt/0.22);
   if(!active)prismPulse=0;
+  if(theme==='throne'){if(active)animateThrone(dt,prismPulse);return;}
   prismArt.style.setProperty('--bass-scale',(1+prismPulse*.23).toFixed(3));
   prismArt.style.setProperty('--bass-light',(.58+prismPulse*.38).toFixed(3));
 }

@@ -565,3 +565,23 @@ html:root .composer #attach:hover {background:var(--line);color:var(--mint);}
   appearance:none;width:10px;height:10px;margin-top:-3px;border:0;border-radius:50%;box-shadow:none;background:var(--mint);
 }
 :is(.header-player,.header-volume,.clip-controls) input[type=range]:focus-visible {outline:2px solid var(--mint);outline-offset:2px;}
+.throne-art {display:none;}
+html:root[data-theme="throne"] {
+  --base:#101115;--inset:#17181d;--panel:#212227;--raised:#303139;--hover:#3d3f47;
+  --edge:#4e505a;--outline:#888b96;--subtext:#cbcbd1;--ink:#faf9f5;--highlight:#e2dfd7;
+  background:#101115;
+}
+html[data-theme="throne"] .throne-art {display:block;position:fixed;inset:0;overflow:hidden;pointer-events:none;--moonlight:.08;}
+.throne-scene {position:absolute;left:50%;top:50%;width:max(100vw,177.78vh);aspect-ratio:16/9;transform:translate(-50%,-50%);background:center/cover url('/throne.jpg');}
+.throne-scene::after {content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 22%,#fff9df 0%,#fff8 8%,transparent 16%);mix-blend-mode:screen;opacity:var(--moonlight);}
+.throne-art i {position:absolute;width:clamp(50px,8vw,118px);aspect-ratio:1;background:center/contain no-repeat url('/skull.png');filter:grayscale(1) drop-shadow(0 0 8px #fff9);}
+.throne-art i::after {content:"";position:absolute;inset:0;background:inherit;filter:brightness(1.7) drop-shadow(0 0 9px white);opacity:var(--moonlight);}
+.throne-art i:nth-of-type(1){left:13%;top:55%;}
+.throne-art i:nth-of-type(2){left:29%;top:76%;width:clamp(42px,5vw,85px);}
+.throne-art i:nth-of-type(3){right:15%;top:53%;scale:-1 1;}
+.throne-art i:nth-of-type(4){right:30%;top:34%;width:clamp(36px,4vw,66px);scale:-1 1;}
+html[data-theme="throne"] .app-shell{position:relative;z-index:1;}
+html:root[data-theme="throne"] :is(.room-header,.people-panel,.chat-panel,.stage-panel,.call-bar,.entry-card){background:#101116b8;border:1px solid #ceced13d;}
+html:root[data-theme="throne"] .stream{background:#10111538;border-color:#ffffff2e;}
+html[data-theme="throne"] .app-header{background:linear-gradient(#101115ca,transparent);}
+@media(prefers-reduced-motion:reduce){.throne-art {--moonlight:.08!important;}}

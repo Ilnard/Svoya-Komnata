@@ -116,7 +116,7 @@ ui.greetingVolume.onchange=()=>savePreference({greetingVolume:ui.greetingVolume.
 ui.theme.onchange=()=>{document.documentElement.dataset.theme=ui.theme.value;savePreference({theme:ui.theme.value});};
 const extrasReady=Promise.resolve(window.roomDevices?.prefs()).then(p=>{
   if(!p)return;
-  if(['mint','ocean','dusk','amber','white','graphite','prism'].includes(p.theme)){ui.theme.value=p.theme;document.documentElement.dataset.theme=p.theme;}
+  if(['mint','ocean','dusk','amber','white','graphite','prism','throne'].includes(p.theme)){ui.theme.value=p.theme;document.documentElement.dataset.theme=p.theme;}
   if(Number.isInteger(p.greetingVolume)){ui.greetingVolume.value=p.greetingVolume;ui.greetingVolume.oninput();}
   personalGreeting=p.greeting||'';showGreeting();
 }).catch(()=>{});
