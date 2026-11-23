@@ -604,3 +604,15 @@ html[data-theme="throne"] .throne-art {background:#050506;--moonlight:.025;--fla
 html:root[data-theme="throne"] .stage-panel {background:#07070969;}
 html:root[data-theme="throne"] .stream {background:#05050735;}
 @media(prefers-reduced-motion:reduce){.brazier{display:none;}.brazier::after{animation:none;}}
+
+/* Coordinates follow the hood in the 1600 × 900 scene artwork. */
+.lord-face {
+  position:absolute;left:50.14%;top:51.75%;width:1.25%;height:auto;
+  transform:translate(-50%,-50%);overflow:visible;opacity:var(--flame,0);
+  filter:drop-shadow(0 0 2px white) drop-shadow(0 0 5px white) drop-shadow(0 0 10px #fffd);
+}
+.throne-art i::before {
+  content:"";position:absolute;inset:0;background:inherit;opacity:var(--flame,0);
+  filter:brightness(2.8) drop-shadow(0 0 12px white) drop-shadow(0 0 26px white) drop-shadow(0 0 38px #fffe);
+}
+@media(prefers-reduced-motion:reduce){.lord-face,.throne-art i::before{display:none;}}
