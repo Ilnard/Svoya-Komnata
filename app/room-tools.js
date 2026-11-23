@@ -24,10 +24,8 @@ window.roomDevices?.prefs().then(p=>{
   if(Number.isInteger(p.noise)){ui.noiseLevel.value=p.noise;ui.noiseValue.textContent=p.noise+'%';}
   if(Number.isInteger(p.delay)){ui.playoutDelay.value=p.delay;ui.playoutDelay.oninput();}
   if(typeof p.shareAudio==='boolean')ui.shareAudio.checked=p.shareAudio;
-  if(p.mode)ui.mode.value=p.mode;
 }).catch(()=>notify('Не удалось прочитать профиль из Документов.',true));
 ui.name.addEventListener('input',()=>savePreference({name:ui.name.value}));
-ui.mode.addEventListener('change',()=>savePreference({mode:ui.mode.value}));
 ui.shareAudio.addEventListener('change',()=>savePreference({shareAudio:ui.shareAudio.checked}));
 ui.noiseLevel.addEventListener('change',()=>savePreference({noise:ui.noiseLevel.valueAsNumber}));
 ui.playoutDelay.addEventListener('change',()=>savePreference({delay:ui.playoutDelay.valueAsNumber}));
@@ -69,13 +67,42 @@ document.addEventListener('click',e=>document.querySelectorAll('.moderation[open
 const chunkSize=48*1024;
 const sizeLabel=n=>n<1024? n+' Б' : n<1048576?Math.ceil(n/1024)+' КиБ':(n/1048576).toFixed(1)+' МиБ';
 ui.attach.onclick=()=>ui.filePick.click();
-ui.filePick.onchange=action(async()=>{
-  const file=ui.filePick.files[0],current=session;ui.filePick.value='';
-  if(!file||!current)return;
-  if(file.size>16*1048576)throw Error('Максимальный размер файла — 16 МиБ.');
+async function sendChatFiles(files){
+  const current=session;
+  if(!current||!files.length)return;
+  if(ui.attach.disabled)throw Error('Дождись окончания отправки.');
+  if(files.some(file=>file.size>16*1048576))throw Error('Максимальный размер файла — 16 МиБ.');
   ui.attach.disabled=true;
-  try{await uploadRoomFile(file,current,{},p=>ui.transferStatus.textContent='Отправка · '+p+'%');}
-  finally{ui.attach.disabled=false;ui.transferStatus.textContent='';}
+  try{
+    for(const file of files){
+      if(session!==current)return;
+      await uploadRoomFile(file,current,{},p=>ui.transferStatus.textContent=file.name+' · '+p+'%');
+    }
+  }finally{ui.attach.disabled=false;ui.transferStatus.textContent='';}
+}
+ui.filePick.onchange=action(async()=>{
+  const files=Array.from(ui.filePick.files);
+  ui.filePick.value='';
+  await sendChatFiles(files);
+});
+const chatDrop=document.querySelector('.chat-panel');
+for(const type of ['dragover','drop'])window.addEventListener(type,event=>{
+  if(event.dataTransfer.types.includes('Files'))event.preventDefault();
+});
+chatDrop.addEventListener('dragover',event=>{
+  if(!event.dataTransfer.types.includes('Files'))return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect='copy';
+  chatDrop.classList.add('file-hover');
+});
+chatDrop.addEventListener('dragleave',event=>{
+  if(!chatDrop.contains(event.relatedTarget))chatDrop.classList.remove('file-hover');
+});
+chatDrop.addEventListener('drop',event=>{
+  chatDrop.classList.remove('file-hover');
+  if(!event.dataTransfer.types.includes('Files'))return;
+  event.preventDefault();
+  sendChatFiles(Array.from(event.dataTransfer.files)).catch(error=>notify(error.message,true));
 });
 async function uploadRoomFile(file,current,extra,progress){
   let id;

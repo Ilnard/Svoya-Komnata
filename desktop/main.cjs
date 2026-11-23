@@ -97,7 +97,6 @@ async function start() {
     if(typeof patch.avatar==='string' && patch.avatar.length<24000 && (patch.avatar==='' || /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(patch.avatar)))valid.avatar=patch.avatar;
     for(const [key,max] of [['noise',100],['delay',1000]]) if(Number.isInteger(patch[key]) && patch[key]>=0 && patch[key]<=max)valid[key]=patch[key];
     if(typeof patch.shareAudio==='boolean')valid.shareAudio=patch.shareAudio;
-    if(['internet','lan'].includes(patch.mode))valid.mode=patch.mode;
     if(Array.isArray(patch.recent)) valid.recent=patch.recent.filter(c=>typeof c==='string' && c.length<6000).slice(0,8);
     if([144,240,360,480,720,1080].includes(patch.viewHeight))valid.viewHeight=patch.viewHeight;
     if([1,2,4,6,8].includes(patch.viewRate))valid.viewRate=patch.viewRate;

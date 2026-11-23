@@ -111,7 +111,7 @@ async function refreshArchives(){
     ui.archiveSelect.replaceChildren(new Option('Новая комната',''));
     for(const room of entries){
       const option=new Option(room.title+' · '+new Date(room.opened).toLocaleDateString('ru-RU'),room.id);
-      option.dataset.mode=room.mode;ui.archiveSelect.add(option);
+      ui.archiveSelect.add(option);
     }
     ui.archiveSelect.value=entries.some(r=>r.id===old)?old:'';
     ui.archiveTitle.hidden=Boolean(ui.archiveSelect.value);
@@ -119,7 +119,6 @@ async function refreshArchives(){
 }
 ui.archiveSelect.onchange=()=>{
   const saved=Boolean(ui.archiveSelect.value);ui.archiveTitle.hidden=saved;
-  if(saved)ui.mode.value=ui.archiveSelect.selectedOptions[0].dataset.mode;
   ui.create.querySelector('span').textContent=saved?'Открыть комнату':'Создать комнату';
 };
 refreshArchives();

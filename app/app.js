@@ -164,7 +164,7 @@ function updateControls() {
   if (adminMuted) ui.selfStatus.textContent = 'Микрофон отключён администратором';
 }
 function updateInvitation() {
-  ui.inviteCode.value = session.invitation || (session.target || ui.address.value) + '/' + session.key;
+  ui.inviteCode.value = (session.target || ui.address.value) + '/' + session.key;
 }
 
 async function api(op, extra = {}, current = session) {
@@ -238,7 +238,6 @@ function showScreen() {
   ui.streamLabel.textContent = screenOwner ? 'Идёт демонстрация' : 'Вы в комнате';
 }
 async function createPeer(id, current) {
-  const bridge = current.direct ? await api('bridge', { to: id }, current) : null;
   if (session !== current) return null;
   const pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: [] });
   const audio = document.createElement('audio');
@@ -246,7 +245,7 @@ async function createPeer(id, current) {
   audio.volume=current.volumes.get(id)??1;
   audio.muted = deafened;
   document.body.append(audio);
-  const peer = { pc, audio, presentation:new MediaStream(), group:new MediaStream(), candidates:[], bridge, generation:current.generations.get(id), started:Date.now() };
+  const peer = { pc, audio, presentation:new MediaStream(), group:new MediaStream(), candidates:[], generation:current.generations.get(id), started:Date.now() };
   peers.set(id, peer);
   pc.ontrack = ({track, transceiver, streams}) => {
     if (pc.getTransceivers().indexOf(transceiver) === 0) {
@@ -266,7 +265,7 @@ async function createPeer(id, current) {
     }
   };
   pc.onicecandidate = ({ candidate }) => {
-    if (candidate && !current.direct && session === current) signal(id, { candidate }, current).catch(error => notify(error.message, true));
+    if (candidate && session === current) signal(id, { candidate }, current).catch(error => notify(error.message, true));
   };
   return peer;
 }
@@ -301,13 +300,7 @@ async function receive(peer, from, payload, current) {
   if (payload.viewAck){acceptViewAck(peer,payload.viewAck);return;}
   if (payload.description) {
     const description = { ...payload.description };
-    if (current.direct) {
-      description.sdp = description.sdp.split('\r\n').filter(line => !line.startsWith('a=candidate:') && line !== 'a=end-of-candidates').join('\r\n');
-    }
     await pc.setRemoteDescription(description);
-    if (peer.bridge) {
-      await pc.addIceCandidate({ candidate: 'candidate:1 1 udp 2130706431 127.0.0.1 ' + peer.bridge.port + ' typ host', sdpMLineIndex: 0 });
-    }
     for (const candidate of peer.candidates.splice(0)) await pc.addIceCandidate(candidate);
     if (payload.description.type === 'offer') {
       [peer.voice, peer.screen, peer.system, peer.music] = pc.getTransceivers();
@@ -446,7 +439,7 @@ function render(state, current) {
       author.textContent = message.name;
       const time = document.createElement('time');
       time.dateTime = new Date(message.time).toISOString();
-      time.textContent = new Date(message.time).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+      time.textContent = new Date(message.time).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
       const text = document.createElement('p');
       text.className = 'message-text';
       text.textContent = message.message;
@@ -481,7 +474,6 @@ async function poll(current) {
         closePeer(peer);
         peers.delete(id);
         Array.from(ui.members.children).find(row => row.dataset.id === id)?.remove();
-        if (current.direct) await api('bridge-close', { to: id }, current);
       }
     }
     for (const { id } of state.members) {
@@ -570,14 +562,13 @@ async function enter(op) {
   const name = ui.name.value.trim();
   if (!name) { ui.name.focus(); notify('Укажи своё имя', true); return; }
   const code = ui.invite.value.trim();
-  const internetInvite = code.startsWith('SK1.');
   const invitation = code.match(/^([0-9.]+)\/([a-f0-9]{36})$/);
-  if (op === 'join' && !invitation && !internetInvite) { notify('Вставь код приглашения целиком', true); ui.invite.focus(); return; }
-  const target = op === 'join' ? (internetInvite ? code : invitation[1]) : undefined;
+  if (op === 'join' && !invitation) { notify('Вставь код приглашения целиком', true); ui.invite.focus(); return; }
+  const target = op === 'join' ? invitation[1] : undefined;
   await extrasReady;
-  const result = await api(op, { name,greeting:personalGreeting, archiveId:op==='create'?ui.archiveSelect.value:undefined,title:op==='create'?ui.archiveTitle.value:undefined,avatar:profilePhoto, target, mode: ui.mode.value, key: invitation?.[2] });
+  const result = await api(op, { name,greeting:personalGreeting, archiveId:op==='create'?ui.archiveSelect.value:undefined,title:op==='create'?ui.archiveTitle.value:undefined,avatar:profilePhoto, target, key: invitation?.[2] });
   const { id, host, key, addresses, token } = result;
-  session = { volumes:new Map(),generations:new Map(),epoch:0,retries:{},id, host, key, target, token, direct: result.direct, invitation: result.invitation };
+  session = { volumes:new Map(),generations:new Map(),epoch:0,retries:{},id, host, key, target, token };
   if(op==='join') rememberRoom(code);
   ui.selfName.textContent = name;
   const self = avatar(name);
@@ -586,7 +577,7 @@ async function enter(op) {
   ui.lobbyError.hidden = true;
   ui.toast.hidden = true;
   ui.hostNote.querySelector('span').textContent = id === host ? 'Комната работает на твоём ПК' : 'Комната работает на ПК хоста';
-  ui.hosting.hidden = op !== 'create' || result.direct;
+  ui.hosting.hidden = op !== 'create';
   ui.networkMessage.hidden = !result.networkMessage;
   ui.networkMessage.textContent = result.networkMessage || '';
   ui.address.replaceChildren(...(addresses?.length ? addresses : ['127.0.0.1']).map(ip => new Option(ip, ip)));
@@ -620,26 +611,10 @@ let entering = false;
 const enterOnce = async op => {
   if (entering || session) return;
   entering = true;
-  ui.lanOffer.hidden = true;
   ui.lobbyError.hidden = true;
   ui.create.disabled = ui.joinButton.disabled = true;
-  status(op === 'create' && ui.mode.value === 'internet' ? 'Ищем роутер и открываем порт…' : 'Подключаемся…', 'waiting');
-  try { await enter(op); } catch (error) {
-    const hosting = op === 'create';
-    if (hosting ? ui.mode.value === 'internet' : ui.invite.value.trim().startsWith('SK1.')) {
-      ui.lanHelp.textContent = 'Подключитесь с друзьями к одной домашней или виртуальной локальной сети. ' +
-        (hosting ? 'Затем создай локальную комнату и выбери адрес этой сети в приглашении.' : 'Попроси хоста создать локальную комнату и прислать новый код.');
-      ui.lanAction.textContent = hosting ? 'Создать локальную комнату' : 'Ввести локальное приглашение';
-      ui.lanOffer.hidden = false;
-      ui.lanAction.onclick = action(async () => {
-        ui.mode.value = 'lan';
-        ui.lanOffer.hidden = ui.lobbyError.hidden = ui.toast.hidden = true;
-        if (hosting) await enterOnce('create');
-        else { ui.manualJoin.open=true; ui.invite.value = ''; ui.invite.focus(); }
-      });
-    }
-    throw error;
-  } finally {
+  status('Подключаемся…','waiting');
+  try { await enter(op); } finally {
     entering = false;
     ui.create.disabled = ui.joinButton.disabled = false;
     if (!session) status('Готовы к разговору');

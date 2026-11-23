@@ -1,13 +1,12 @@
 let recentRooms=[], listBusy=false, lastList='';
-const prefsReady=window.roomDevices?.prefs().then(p=>{recentRooms=p.recent||[];}).catch(()=>{});
+const prefsReady=window.roomDevices?.prefs().then(p=>{recentRooms=(p.recent||[]).filter(code=>typeof code==='string' && !code.startsWith('SK1.'));}).catch(()=>{});
 function rememberRoom(code){
   recentRooms=[code,...recentRooms.filter(item=>item!==code)].slice(0,8);
   savePreference({recent:recentRooms});
 }
 async function knownRoom(code){
-  const direct=code.startsWith('SK1.');
   const [address,key]=code.split('/');
-  const room=await api('info',{target:direct?code:address,key:direct?undefined:key},null);
+  const room=await api('info',{target:address,key},null);
   if(typeof room.name!=='string' || typeof room.key!=='string' || !Number.isInteger(room.count))return null;
   return {...room,code};
 }

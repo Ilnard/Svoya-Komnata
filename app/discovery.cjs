@@ -1,7 +1,6 @@
 const udp = require('node:dgram');
 const os = require('node:os');
 const {randomBytes} = require('node:crypto');
-const {encodeInvite} = require('./direct.cjs');
 const port = 47833;
 const signature = 'SVROOM/1 ';
 const number = ip => ip.split('.').reduce((n,part)=>(n<<8)|Number(part),0)>>>0;
@@ -33,7 +32,8 @@ function discover(){
       try{
         const r=JSON.parse(msg);
         if(r.nonce!==nonce || !/^[a-f0-9]{36}$/.test(r.key) || typeof r.name!=='string' || !Number.isInteger(r.count) || r.count<1 || r.count>8)return;
-        const code=r.endpoint ? encodeInvite({...r.endpoint,address:remote.address,key:r.key}):remote.address+'/'+r.key;
+        if(r.endpoint)return;
+        const code=remote.address+'/'+r.key;
         rooms.set(r.key,{name:r.name.slice(0,32),count:r.count,code,key:r.key});
       }catch{}
     });

@@ -11,7 +11,7 @@ const fs = require('node:fs');
 const { randomUUID, randomBytes } = require('node:crypto');
 const { join } = require('node:path');
 const { spawn } = require('node:child_process');
-const direct = require('./direct.cjs');
+
 
 const archives=require('./archives.cjs');
 const port = 47832;
@@ -22,10 +22,8 @@ function describeRoom(){
   return {key:room.key,name:room.archive.settings.title,count:room.members.size};
 }
 function announce(){
-  listener=discovery.advertise(()=>({...describeRoom(),endpoint:room?.direct ? directHost.localEndpoint : undefined}));
+  listener=discovery.advertise(describeRoom);
 }
-let directHost, creating = false, closing = Promise.resolve(), networkError;
-const bridges = new Map();
 const answer = (res, value, status = 200) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(value));
@@ -43,42 +41,23 @@ async function body(req) {
   return JSON.parse(result);
 }
 function remove(id) {
-  bridges.get(id)?.close();
-  bridges.delete(id);
-  directHost?.drop(id);
   if (id === room.host) {
     room.archive.close();
     listener?.close();listener=undefined;
     room = undefined;
-    for (const bridge of bridges.values()) bridge.close();
-    bridges.clear();
-    const hostToClose = directHost;
-    directHost = undefined;
-    closing = hostToClose?.close() || Promise.resolve();
     return;
   }
   room.members.delete(id);
   if (room.screen === id) room.screen = null;
 }
 function authorize(data) {
-  if (!room || data.key !== room.key) fail(networkError || 'Комната недоступна', 404);
+  if (!room || data.key !== room.key) fail('Комната недоступна', 404);
   if (room.kicked.has(data.token)) fail('Администратор исключил тебя из комнаты',410);
   const member = room.members.get(data.id);
   if (!member || member.token !== data.token) fail('Сеанс завершён или неверный ключ участника', 404);
   return member;
 }
-let interfaces='';
-const routeMonitor=setInterval(()=>{
-  if (!bridges.size) {interfaces='';return;}
-  const current=Object.values(os.networkInterfaces()).flat().map(n=>n.address).sort().join('|');
-  if(interfaces && interfaces!==current) for(const bridge of bridges.values()) bridge.reconnect();
-  interfaces=current;
-},500);
-routeMonitor.unref();
 const expiry = setInterval(() => {
-  for (const [id, bridge] of bridges) {
-    if (Date.now() - bridge.touched > 310_000) { bridge.close(); bridges.delete(id); }
-  }
   if (!room) return;
   for (const [token,when] of room.kicked) if(Date.now()-when>300000) room.kicked.delete(token);
   for (const [id, member] of room.members) {
@@ -92,10 +71,10 @@ function command(data, local = false, address) {
     if (!local) fail('Комнату создаёт локальный клиент', 403);
     if (room) fail('На этом ПК уже открыта комната', 409);
     if (!String(data.name ?? '').trim()) fail('Укажи имя');
-    const archive=archives.open(data.archiveId,(String(data.title||'').trim()||String(data.name).trim()).slice(0,60),data.mode==='internet'?'internet':'lan');
+    const archive=archives.open(data.archiveId,(String(data.title||'').trim()||String(data.name).trim()).slice(0,60),'lan');
     room = { archive,music:require('./music.cjs').open(archive),key: randomBytes(18).toString('hex'), members: new Map(), files:new Map(), kicked:new Map(), chat: archive.page(), screen: null };
   }
-  if (!room || (data.op !== 'create' && data.key !== room.key)) fail(networkError || 'Комната недоступна', 404);
+  if (!room || (data.op !== 'create' && data.key !== room.key)) fail('Комната недоступна', 404);
   if (data.op === 'join' || data.op === 'create') {
     const name = String(data.name ?? '').trim().slice(0, 32);
     if (!name || room.members.size >= 8) fail('Укажи имя или попробуй войти, когда освободится место');
@@ -146,7 +125,6 @@ function command(data, local = false, address) {
         screen: room.screen,
         screenId: room.screen ? room.screenId : null,
         screenHasAudio: Boolean(room.screen && room.screenHasAudio),
-        networkWarning: data.id === room.host ? networkError : undefined,
         signals: member.signals.splice(0),
       };
     case 'moderate': {
@@ -189,7 +167,6 @@ function command(data, local = false, address) {
 const host = http.createServer(async (req, res) => {
   try {
     if (req.method !== 'POST' || req.url !== '/room') fail('Страница недоступна', 404);
-    if (room?.direct) fail('Для интернет-комнаты используй приглашение SK1.', 403);
     answer(res, command(await body(req),false,req.socket.remoteAddress));
   } catch (error) { answer(res, { error: error.status ? error.message : 'Некорректный запрос' }, error.status || 400); }
 });
@@ -229,69 +206,7 @@ const client = http.createServer(async (req, res) => {
     function clientResult(result,status){
 return answer(res,result,status);
     }
-    const activeBridge = bridges.get(data.id);
-    if (activeBridge && activeBridge.credentials.token === data.token) activeBridge.touched = Date.now();
-    if (data.op === 'bridge' || data.op === 'bridge-close') {
-      const bridge = bridges.get(data.id);
-      if (!bridge || bridge.credentials.token !== data.token) fail('Медиасеанс недоступен', 404);
-      if (data.op === 'bridge-close') { bridge.remove(data.to); return answer(res, {}); }
-      return answer(res, { port: await bridge.peer(data.to) });
-    }
-    if (data.op === 'create' && data.mode === 'internet') {
-      if (creating || room) fail('Комната уже создаётся или открыта', 409);
-      if (!host.listening) fail('Уже запущена другая копия приложения или занят локальный порт 47832. Закрой другую копию и запусти приложение снова.', 409);
-      if (!String(data.name ?? '').trim()) fail('Укажи имя');
-      creating = true;
-      networkError = undefined;
-      try {
-        await closing;
-        directHost = await direct.startHost({
-          command, authorize, readBody: body, answer,
-          onFailure: message => { networkError = message; },
-        });
-        const result = command(data, true);
-        room.direct = true;announce();
-        const endpoint = { ...directHost.endpoint, key: room.key };
-        result.invitation = direct.encodeInvite(endpoint);
-        result.direct = true;
-        result.networkMessage = 'Роутер подтвердил открытие TCP-порта ' + endpoint.port + '. Доступность извне подтвердится при входе друга.';
-        bridges.set(result.id, new direct.MediaBridge(directHost.localEndpoint, result));
-        return clientResult(result);
-      } catch (error) {
-        await directHost?.close();
-        directHost = undefined;
-        room?.archive.close();
-        room = undefined;
-        throw Object.assign(error, { status: error.status || 503 });
-      } finally { creating = false; }
-    }
-    if (typeof target === 'string' && target.startsWith('SK1.')) {
-      if (bridges.get(data.id)?.hostClosed) {
-        bridges.delete(data.id);
-        fail('Хост закрыл комнату', 404);
-      }
-      const endpoint = direct.parseInvite(target);
-      let result;
-      try {
-        result = await direct.remoteCommand(endpoint, { ...data, key: endpoint.key });
-      } catch (error) {
-        if (data.op === 'leave' || error.status === 404 || error.status === 410) { bridges.get(data.id)?.close(); bridges.delete(data.id); }
-        if (!error.status) {
-          error.status = 503;
-          error.message = 'Не удалось подключиться к хосту. Проверь приглашение, интернет и брандмауэр хоста. ' + error.message;
-        }
-        throw error;
-      }
-      if (data.op === 'join') {
-        result.direct = true;
-        result.invitation = target;
-        bridges.set(result.id, new direct.MediaBridge(endpoint, result));
-      }
-      if (data.op === 'leave') { bridges.get(data.id)?.close(); bridges.delete(data.id); }
-      return clientResult(result);
-    }
     if (!target) {
-      if (data.op === 'create' && creating) fail('Комната уже создаётся', 409);
       if (data.op === 'create' && (listenError || !host.listening)) fail('TCP-порт 47832 занят или недоступен');
       const result = command(data, true);
       if (data.op === 'create') {
@@ -319,8 +234,6 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   if (room) remove(room.host);
-  for (const bridge of bridges.values()) bridge.close();
-  await closing;
   process.exit(0);
 }
 process.on('SIGINT', shutdown);

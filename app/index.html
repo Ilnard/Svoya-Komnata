@@ -17,7 +17,7 @@
     <h1>Хорошо, когда<br>все <em>рядом.</em></h1>
     <p class="intro">Своя комната для разговоров с друзьями.<br>Создай её и пригласи своих.</p>
     <div class="capabilities"><span><i data-icon="mic"></i>Голос</span><span><i data-icon="chat"></i>Чат</span><span><i data-icon="screen"></i>Общий экран</span></div>
-    <div class="network-note"><i data-icon="network"></i><p>Прямое подключение к ПК хоста.<br>До 8 человек. Для интернета нужны UPnP и публичный IPv4.</p></div>
+    <div class="network-note"><i data-icon="network"></i><p>До 8 человек в одной локальной сети.</p></div>
   </section>
   <section class="entry-card" aria-labelledby="entryTitle">
     <h2 id="entryTitle">Давай созвонимся</h2><p class="muted">Как тебя увидят друзья?</p>
@@ -25,8 +25,6 @@
     <label for="name">Твоё имя</label><input id="name" maxlength="32" autocomplete="nickname" placeholder="Например, Саша">
     <div class="greeting-edit"><button class="secondary" id="pickGreeting">Добавить звук входа</button><button id="playGreeting" hidden>Послушать</button><button id="clearGreeting" hidden>Убрать</button><input hidden type="file" id="greetingFile" accept="audio/*"><small>До 3 секунд</small></div><label for="archiveSelect">Моя комната</label><select id="archiveSelect"><option value="">Новая комната</option></select>
     <input id="archiveTitle" maxlength="60" aria-label="Название новой комнаты" placeholder="Название комнаты">
-    <label for="mode" class="mode-label">Создать комнату</label>
-    <select id="mode"><option value="internet">Через интернет · автоматически открыть порт</option><option value="lan">В локальной сети</option></select>
     <small class="field-hint">Комната будет видна участникам вашей локальной сети.</small>
     <button id="create" class="primary wide"><i data-icon="plus"></i><span>Создать комнату</span><i class="end-icon" data-icon="arrow"></i></button>
     <section class="room-directory"><h3>Доступные комнаты</h3><button id="refreshRooms" class="secondary">Обновить</button><div id="roomList"></div><small id="roomListHint" role="status"></small></section>
@@ -37,16 +35,12 @@
     </form>
     </details>
     <p id="lobbyError" class="inline-error" role="alert" hidden></p>
-    <div id="lanOffer" hidden>
-      <p class="field-hint" id="lanHelp"></p>
-      <button type="button" id="lanAction" class="secondary wide"></button>
-    </div>
 
     <p class="entry-hint"><i data-icon="mic-off"></i>Микрофон включается после входа</p>
   </section>
 <small class="app-version" id="menuVersion"></small></main>
 <main id="room" class="room" hidden>
-  <header class="room-header"><div class="header-player"><div class="track-info"><strong id="songName">Очередь пуста</strong><small id="songArtist"></small></div><div class="track-position"><svg class="track-wave" viewBox="0 0 288 24" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="waveProgress" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="288" y2="0"><stop id="wavePlayed" offset="0" stop-color="var(--mint)"/><stop id="waveRemaining" offset="0" stop-color="var(--muted)" stop-opacity=".35"/></linearGradient></defs><g id="songBars" fill="url(#waveProgress)"></g></svg><input type="range" id="songSeek" min="0" max="0" step="0.1" value="0" aria-label="Позиция трека"></div><small id="songTime"></small><div class="transport"><button id="songPrevious" aria-label="Предыдущий трек" title="Предыдущий трек">⏮</button><button id="songPlay" aria-label="Воспроизвести" title="Воспроизвести">▶</button><button id="songNext" aria-label="Следующий трек" title="Следующий трек">⏭</button></div></div><div class="header-volume"><label for="songVolume" title="Громкость музыки"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z M16 8q4 4 0 8 M19 5q7 7 0 14"/></svg><span class="volume-caption">Громкость · <output id="songPercent">70%</output></span></label><input id="songVolume" type="range" min="0" max="100" value="70"></div>
+  <header class="room-header"><div class="header-player"><div class="track-info"><strong id="songName">Очередь пуста</strong><small id="songArtist"></small></div><div class="track-position"><svg class="track-wave" viewBox="0 0 288 24" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="waveProgress" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="288" y2="0"><stop id="wavePlayed" offset="0" stop-color="var(--mint)"/><stop id="waveRemaining" offset="0" stop-color="var(--muted)" stop-opacity=".35"/></linearGradient></defs><g id="songBars" fill="url(#waveProgress)"></g></svg><input type="range" id="songSeek" min="0" max="0" step="0.1" value="0" aria-label="Позиция трека"></div><small id="songTime"></small><div class="transport"><button id="songPrevious" aria-label="Предыдущий трек" title="Предыдущий трек"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h2v12H4z M16 4v12L7 10z"/></svg></button><button id="songPlay" aria-label="Воспроизвести" title="Воспроизвести">▶</button><button id="songNext" aria-label="Следующий трек" title="Следующий трек"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14 4h2v12h-2z M4 4l9 6-9 6z"/></svg></button></div></div><div class="header-volume"><label for="songVolume" title="Громкость музыки"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z M16 8q4 4 0 8 M19 5q7 7 0 14"/></svg><span class="volume-caption">Громкость · <output id="songPercent">70%</output></span></label><input id="songVolume" type="range" min="0" max="100" value="70"></div>
     
     <button id="openMusic" class="secondary">♫ Музыка</button>
   </header>
@@ -84,7 +78,7 @@
         <div id="chatEmpty" class="chat-empty"><i data-icon="chat"></i><p>Начни с «Привет!»</p><span>Сообщения видны всем в комнате</span></div>
         <ol id="messages" aria-live="polite" aria-relevant="additions" aria-label="Сообщения"></ol>
       </div>
-      <small id="transferStatus" role="status"></small><form id="send" class="composer"><button type="button" id="attach" title="Прикрепить файл до 16 МиБ" aria-label="Прикрепить файл">＋</button><input type="file" id="filePick" hidden><input id="message" aria-label="Сообщение" placeholder="Написать сообщение…" maxlength="1000" required autocomplete="off"><button class="send-button" aria-label="Отправить сообщение" title="Отправить"><i data-icon="send"></i></button></form>
+      <small id="transferStatus" role="status"></small><form id="send" class="composer"><button type="button" id="attach" title="Прикрепить файл до 16 МиБ" aria-label="Прикрепить файл">＋</button><input type="file" id="filePick" multiple hidden><input id="message" aria-label="Сообщение" placeholder="Написать сообщение…" maxlength="1000" required autocomplete="off"><button class="send-button" aria-label="Отправить сообщение" title="Отправить"><i data-icon="send"></i></button></form>
     </section>
   </div>
   <footer class="call-bar">

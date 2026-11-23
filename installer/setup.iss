@@ -1,5 +1,5 @@
 #define AppVersion GetStringFileInfo("room\desktop\SvoyaKomnata.exe", "ProductVersion")
-#define RoomVersion "0.23.14"
+#define RoomVersion "0.24.0"
 [Setup]
 AppId=SvoyaKomnataDesktopEXE
 AppName=Своя комната
@@ -27,7 +27,7 @@ SetupLogging=yes
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 [Files]
-Source: "room\*"; DestDir: "{app}\app"; Excludes: "\SvoyaKomnata.exe,Launcher.cs,icon-prompt.txt,port-mapping.state.json"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "room\*"; DestDir: "{app}\app"; Excludes: "\SvoyaKomnata.exe,Launcher.cs,icon-prompt.txt,port-mapping.state.json,direct.cjs,upnp.cjs,routes.cjs"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{group}\Своя комната"; Filename: "{app}\app\desktop\SvoyaKomnata.exe"; WorkingDir: "{app}\app\desktop"; IconFilename: "{app}\app\icon.ico"; AppUserModelID: "SvoyaKomnata.Desktop"; Check: not IsPortable
 [Run]
