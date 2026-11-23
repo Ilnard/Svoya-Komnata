@@ -17,7 +17,7 @@ let orbitTime=0,torchHeat=0,beatArmed=true;
 function animateThrone(dt,pulse,onset=0){
   if(onset<.10)beatArmed=true;
   torchHeat*=Math.exp(-dt/.23);
-  if(beatArmed && onset>.29){
+  if(beatArmed && onset>.24){
     torchHeat=Math.min(1,.45+onset);
     beatArmed=false;
     shake?.cancel();
